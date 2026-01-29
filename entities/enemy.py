@@ -4,6 +4,7 @@ import pygame
 import random
 import math
 from entities.bullet import Bullet
+from utils import draw_glow_circle, lighten_color, darken_color
 
 class Enemy:
     def __init__(self, x, y, color_outer, color_inner, screen_width, screen_height):
@@ -49,6 +50,19 @@ class Enemy:
         self.bullets.append(bullet)
 
     def draw(self, surface):
-        # Draw the enemy
-        pygame.draw.circle(surface, self.color_outer, (int(self.x), int(self.y)), self.radius_outer)
-        pygame.draw.circle(surface, self.color_inner, (int(self.x), int(self.y)), self.radius_inner)
+        center = (int(self.x), int(self.y))
+        glow_color = lighten_color(self.color_outer, 0.4)
+        draw_glow_circle(surface, glow_color, center, self.radius_outer, glow_radius=10, alpha=120)
+
+        ring_color = darken_color(self.color_outer, 0.2)
+        pygame.draw.circle(surface, self.color_outer, center, self.radius_outer)
+        pygame.draw.circle(surface, ring_color, center, self.radius_outer, width=3)
+
+        inner_color = lighten_color(self.color_inner, 0.3)
+        pygame.draw.circle(surface, inner_color, center, self.radius_inner)
+        pygame.draw.circle(surface, self.color_inner, center, int(self.radius_inner * 0.6))
+
+        eye_offset = self.radius_inner * 0.6
+        eye_color = (255, 120, 120)
+        pygame.draw.circle(surface, eye_color, (int(self.x - eye_offset), int(self.y - eye_offset * 0.2)), 3)
+        pygame.draw.circle(surface, eye_color, (int(self.x + eye_offset), int(self.y - eye_offset * 0.2)), 3)

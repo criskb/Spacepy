@@ -39,7 +39,27 @@ def rotate_point(angle, x, y):
     y_new = x * sin_theta + y * cos_theta
     return (x_new, y_new)
 
-# utils.py
+def clamp_color(value):
+    """Clamp color channel values to the 0-255 range."""
+    return max(0, min(255, int(value)))
+
+def lighten_color(color, ratio):
+    """Lighten a color by blending it with white."""
+    return blend_colors(color, (255, 255, 255), ratio)
+
+def darken_color(color, ratio):
+    """Darken a color by blending it with black."""
+    return blend_colors(color, (0, 0, 0), ratio)
+
+def draw_glow_circle(surface, color, position, radius, glow_radius=12, alpha=180):
+    """Draw a soft glow around a circle."""
+    glow_surface = pygame.Surface((radius * 2 + glow_radius * 2, radius * 2 + glow_radius * 2), pygame.SRCALPHA)
+    center = (radius + glow_radius, radius + glow_radius)
+    for i in range(glow_radius, 0, -1):
+        glow_alpha = int(alpha * (i / glow_radius))
+        glow_color = (*color, glow_alpha)
+        pygame.draw.circle(glow_surface, glow_color, center, radius + i)
+    surface.blit(glow_surface, (position[0] - center[0], position[1] - center[1]))
 
 def blend_colors(color1, color2, ratio):
     """

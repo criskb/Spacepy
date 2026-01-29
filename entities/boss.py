@@ -4,6 +4,7 @@ import pygame
 import math
 import random
 from entities.bullet import Bullet
+from utils import draw_glow_circle, lighten_color, darken_color
 
 class Boss:
     def __init__(self, x, y, color_outer, color_inner, screen_width, screen_height):
@@ -76,9 +77,28 @@ class Boss:
         pass  # Movement is handled in the main game loop
 
     def draw(self, surface):
-        # Draw the boss
-        pygame.draw.circle(surface, self.color_outer, (int(self.x), int(self.y)), self.radius_outer)
-        pygame.draw.circle(surface, self.color_inner, (int(self.x), int(self.y)), self.radius_inner)
+        center = (int(self.x), int(self.y))
+        glow_color = lighten_color(self.color_outer, 0.4)
+        draw_glow_circle(surface, glow_color, center, self.radius_outer, glow_radius=18, alpha=160)
+
+        outer_ring = darken_color(self.color_outer, 0.2)
+        pygame.draw.circle(surface, self.color_outer, center, self.radius_outer)
+        pygame.draw.circle(surface, outer_ring, center, self.radius_outer, width=4)
+
+        mid_radius = int(self.radius_outer * 0.7)
+        mid_color = lighten_color(self.color_outer, 0.2)
+        pygame.draw.circle(surface, mid_color, center, mid_radius)
+
+        core_color = lighten_color(self.color_inner, 0.4)
+        pygame.draw.circle(surface, core_color, center, self.radius_inner)
+        pygame.draw.circle(surface, self.color_inner, center, int(self.radius_inner * 0.6))
+
+        spoke_color = darken_color(self.color_outer, 0.4)
+        for i in range(6):
+            angle = i * (math.pi / 3)
+            end_x = self.x + math.cos(angle) * self.radius_outer
+            end_y = self.y + math.sin(angle) * self.radius_outer
+            pygame.draw.line(surface, spoke_color, center, (end_x, end_y), width=3)
 
     def draw_health_bar(self, surface):
         # Draw the health bar above the boss
@@ -86,5 +106,17 @@ class Boss:
         bar_height = 10
         health_ratio = self.health / 20
         health_bar_width = bar_width * health_ratio
-        pygame.draw.rect(surface, (255, 0, 0), (self.x - bar_width / 2, self.y - self.radius_outer - 20, bar_width, bar_height))
-        pygame.draw.rect(surface, (0, 255, 0), (self.x - bar_width / 2, self.y - self.radius_outer - 20, health_bar_width, bar_height))
+        bar_x = self.x - bar_width / 2
+        bar_y = self.y - self.radius_outer - 20
+        pygame.draw.rect(
+            surface,
+            (60, 60, 60),
+            (bar_x, bar_y, bar_width, bar_height),
+            border_radius=6,
+        )
+        pygame.draw.rect(
+            surface,
+            (0, 220, 140),
+            (bar_x, bar_y, health_bar_width, bar_height),
+            border_radius=6,
+        )
