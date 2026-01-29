@@ -3,6 +3,7 @@
 import pygame
 import math
 from entities.bullet import Bullet
+from utils import draw_glow_circle, lighten_color, darken_color
 
 class Player:
     def __init__(self, x, y, color, screen_width, screen_height):
@@ -97,7 +98,44 @@ class Player:
             self.deactivate_power_up()
 
     def draw(self, surface):
-        pygame.draw.circle(surface, self.color, (int(self.x), int(self.y)), self.radius)
+        base_color = self.color
+        glow_color = lighten_color(base_color, 0.3)
+        draw_glow_circle(surface, glow_color, (int(self.x), int(self.y)), self.radius, glow_radius=16, alpha=140)
+
+        ship_length = self.radius * 1.6
+        ship_width = self.radius * 1.2
+        nose = (self.x, self.y - ship_length)
+        left_wing = (self.x - ship_width, self.y + self.radius * 0.5)
+        right_wing = (self.x + ship_width, self.y + self.radius * 0.5)
+        tail = (self.x, self.y + self.radius * 1.1)
+        body_points = [nose, right_wing, tail, left_wing]
+        pygame.draw.polygon(surface, base_color, body_points)
+
+        canopy_color = lighten_color(base_color, 0.6)
+        pygame.draw.polygon(
+            surface,
+            canopy_color,
+            [
+                (self.x, self.y - ship_length * 0.6),
+                (self.x + ship_width * 0.35, self.y),
+                (self.x, self.y + self.radius * 0.2),
+                (self.x - ship_width * 0.35, self.y),
+            ],
+        )
+
+        outline_color = darken_color(base_color, 0.4)
+        pygame.draw.polygon(surface, outline_color, body_points, width=2)
+
+        thruster_color = (80, 200, 255)
+        pygame.draw.polygon(
+            surface,
+            thruster_color,
+            [
+                (self.x - ship_width * 0.35, self.y + self.radius * 0.9),
+                (self.x + ship_width * 0.35, self.y + self.radius * 0.9),
+                (self.x, self.y + self.radius * 1.5),
+            ],
+        )
 
     def reset(self):
         self.x = self.screen_width // 2

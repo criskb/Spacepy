@@ -3,6 +3,7 @@
 import pygame
 import colorsys
 import random
+from utils import draw_glow_circle, lighten_color
 
 class HealthItem:
     def __init__(self, x, y, speed):
@@ -26,4 +27,20 @@ class HealthItem:
         """Draw the health item with RGB cycling."""
         rgb_fractional = colorsys.hsv_to_rgb(self.hue, 1, 1)
         rgb = tuple(int(c * 255) for c in rgb_fractional)
-        pygame.draw.circle(surface, rgb, (int(self.x), int(self.y)), self.radius)
+        center = (int(self.x), int(self.y))
+        draw_glow_circle(surface, lighten_color(rgb, 0.3), center, self.radius, glow_radius=10, alpha=140)
+        pygame.draw.circle(surface, rgb, center, self.radius)
+        cross_color = (255, 255, 255)
+        thickness = 4
+        pygame.draw.rect(
+            surface,
+            cross_color,
+            (self.x - thickness / 2, self.y - self.radius * 0.6, thickness, self.radius * 1.2),
+            border_radius=2,
+        )
+        pygame.draw.rect(
+            surface,
+            cross_color,
+            (self.x - self.radius * 0.6, self.y - thickness / 2, self.radius * 1.2, thickness),
+            border_radius=2,
+        )
