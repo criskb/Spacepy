@@ -453,17 +453,16 @@ def main():
 
         button_y = right_panel.y + 100
         button_x = right_panel.x + 20
-        for button in [
-            builder_hull_prev,
-            builder_hull_next,
-            builder_color_prev,
-            builder_color_next,
-            builder_nozzle_prev,
-            builder_nozzle_next,
-        ]:
-            button.position = (button_x, button_y)
-            button.rect.topleft = button.position
-            button_y += 70
+        row_specs = [
+            (builder_hull_prev, builder_hull_next, right_panel.y + 140),
+            (builder_color_prev, builder_color_next, right_panel.y + 200),
+            (builder_nozzle_prev, builder_nozzle_next, right_panel.y + 260),
+        ]
+        for left_button, right_button, y in row_specs:
+            left_button.position = (button_x, y)
+            left_button.rect.topleft = left_button.position
+            right_button.position = (button_x + 230, y)
+            right_button.rect.topleft = right_button.position
 
         builder_weapon_button.position = (left_panel.x + 20, left_panel.y + 510)
         builder_weapon_button.rect.topleft = builder_weapon_button.position
@@ -1184,19 +1183,25 @@ def main():
             hull_status = "Owned" if hull_owned else f"{hull_option['cost']}c"
             color_status = "Owned" if color_owned else f"{color_option['cost']}c"
             nozzle_status = "Owned" if nozzle_owned else f"{nozzle_option['cost']}c"
+            hull_label_text = selection_font.render("Hull", True, (200, 200, 220))
+            color_label_text = selection_font.render("Color", True, (200, 200, 220))
+            nozzle_label_text = selection_font.render("Nozzle", True, (200, 200, 220))
+            temp_surface.blit(hull_label_text, (center_panel.x + 30, center_panel.y + 250))
+            temp_surface.blit(color_label_text, (center_panel.x + 30, center_panel.y + 290))
+            temp_surface.blit(nozzle_label_text, (center_panel.x + 30, center_panel.y + 330))
             hull_text = selection_font.render(f"< {hull_option['label']} >", True, WHITE)
             color_text = selection_font.render(f"< {color_option['label']} >", True, WHITE)
             nozzle_text = selection_font.render(f"< {nozzle_option['label']} >", True, WHITE)
-            temp_surface.blit(hull_text, (center_panel.x + 30, center_panel.y + 270))
-            temp_surface.blit(color_text, (center_panel.x + 30, center_panel.y + 305))
-            temp_surface.blit(nozzle_text, (center_panel.x + 30, center_panel.y + 340))
+            temp_surface.blit(hull_text, (center_panel.x + 140, center_panel.y + 250))
+            temp_surface.blit(color_text, (center_panel.x + 140, center_panel.y + 290))
+            temp_surface.blit(nozzle_text, (center_panel.x + 140, center_panel.y + 330))
             status_font = pygame.font.Font(None, 24)
             hull_status_text = status_font.render(hull_status, True, (200, 200, 200))
             color_status_text = status_font.render(color_status, True, (200, 200, 200))
             nozzle_status_text = status_font.render(nozzle_status, True, (200, 200, 200))
-            temp_surface.blit(hull_status_text, (center_panel.x + 260, center_panel.y + 275))
-            temp_surface.blit(color_status_text, (center_panel.x + 260, center_panel.y + 310))
-            temp_surface.blit(nozzle_status_text, (center_panel.x + 260, center_panel.y + 345))
+            temp_surface.blit(hull_status_text, (center_panel.x + 360, center_panel.y + 255))
+            temp_surface.blit(color_status_text, (center_panel.x + 360, center_panel.y + 295))
+            temp_surface.blit(nozzle_status_text, (center_panel.x + 360, center_panel.y + 335))
 
             detail_font = pygame.font.Font(None, 26)
             hull_detail = detail_font.render("Hull: Balanced core frame.", True, (180, 180, 200))
