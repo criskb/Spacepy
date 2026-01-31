@@ -632,6 +632,13 @@ def main():
                     sys.exit()
             elif game_state == "ship_builder":
                 layout_ship_builder()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_LEFT:
+                        current_index = [c["id"] for c in color_options].index(selected_color)
+                        selected_color = color_options[current_index - 1]["id"]
+                    if event.key == pygame.K_RIGHT:
+                        current_index = [c["id"] for c in color_options].index(selected_color)
+                        selected_color = color_options[(current_index + 1) % len(color_options)]["id"]
                 if builder_back_button.is_clicked(event):
                     persist_save()
                     game_state = "menu"
@@ -1165,23 +1172,24 @@ def main():
 
             preview_x = center_panel.centerx
             preview_y = center_panel.y + 170
+            pending_color = get_option(color_options, selected_color)
             preview_player = Player(preview_x, preview_y, player.color, SCREEN_WIDTH, SCREEN_HEIGHT)
             preview_player.wing_level = player.wing_level
             preview_player.weapon_level = player.weapon_level
             preview_player.hull_type = selected_hull
             preview_player.nozzle_type = selected_nozzle
-            preview_player.color = get_option(color_options, selected_color)["color"]
+            preview_player.color = pending_color["color"]
             preview_player.draw(temp_surface)
 
             selection_font = pygame.font.Font(None, 30)
             hull_option = get_option(hull_options, selected_hull)
-            color_option = get_option(color_options, selected_color)
+            color_option = pending_color
             nozzle_option = get_option(nozzle_options, selected_nozzle)
             hull_owned = selected_hull in owned_hulls
             color_owned = selected_color in owned_colors
             nozzle_owned = selected_nozzle in owned_nozzles
             hull_status = "Owned" if hull_owned else f"{hull_option['cost']}c"
-            color_status = "Owned" if color_owned else f"{color_option['cost']}c"
+            color_status = "Owned" if color_owned else f"Locked / {color_option['cost']}c"
             nozzle_status = "Owned" if nozzle_owned else f"{nozzle_option['cost']}c"
             hull_label_text = selection_font.render("Hull", True, (200, 200, 220))
             color_label_text = selection_font.render("Color", True, (200, 200, 220))
@@ -1218,6 +1226,7 @@ def main():
                 pending_cost += color_option["cost"]
             if not nozzle_owned:
                 pending_cost += nozzle_option["cost"]
+            can_confirm = player.can_afford(pending_cost)
             confirm_label = f"Confirm ({pending_cost}c)" if pending_cost else "Confirm (Owned)"
             confirm_text = selection_font.render(confirm_label, True, WHITE)
             temp_surface.blit(confirm_text, (center_panel.x + 30, center_panel.y + 390))
@@ -1318,6 +1327,12 @@ def main():
                 swatch_x += swatch_size + swatch_spacing
 
             layout_ship_builder()
+            if can_confirm:
+                builder_confirm_button.color = (72, 61, 139)
+                builder_confirm_button.hover_color = (106, 90, 205)
+            else:
+                builder_confirm_button.color = (70, 70, 70)
+                builder_confirm_button.hover_color = (90, 90, 90)
             for button in [
                 builder_hull_prev,
                 builder_hull_next,
