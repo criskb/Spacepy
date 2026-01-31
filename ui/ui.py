@@ -73,3 +73,99 @@ class ScoreDisplay:
         surface.blit(level_shadow, (22, 82))
         surface.blit(score_text, (20, 50))
         surface.blit(level_text, (20, 80))
+
+class DialogBubble:
+    def __init__(self, font, position, size, text_color=(255, 255, 255)):
+        self.font = font
+        self.position = position
+        self.size = size
+        self.text_color = text_color
+        self.padding = 14
+        self.speaker = ""
+        self.full_text = ""
+        self.current_text = ""
+        self.char_index = 0
+        self.typing_speed = 40  # chars per second
+        self.start_time = 0
+        self.last_tick = 0
+        self.hold_time = 2500
+        self.finish_time = None
+        self.visible = False
+
+    def start(self, speaker, text, start_time, typing_speed=40, hold_time=2500):
+        self.speaker = speaker
+        self.full_text = text
+        self.current_text = ""
+        self.char_index = 0
+        self.typing_speed = typing_speed
+        self.start_time = start_time
+        self.last_tick = start_time
+        self.hold_time = hold_time
+        self.finish_time = None
+        self.visible = True
+
+    def update(self, current_time):
+        if not self.visible:
+            return
+        if self.finish_time is not None:
+            if current_time - self.finish_time > self.hold_time:
+                self.visible = False
+            return
+        elapsed = current_time - self.last_tick
+        if elapsed <= 0:
+            return
+        chars_to_add = int(elapsed / 1000 * self.typing_speed)
+        if chars_to_add > 0:
+            self.char_index = min(self.char_index + chars_to_add, len(self.full_text))
+            self.current_text = self.full_text[:self.char_index]
+            self.last_tick = current_time
+        if self.char_index >= len(self.full_text):
+            self.finish_time = current_time
+
+    def is_active(self):
+        return self.visible
+
+    def _wrap_text(self, text, max_width):
+        words = text.split()
+        lines = []
+        current_line = ""
+        for word in words:
+            test_line = f"{current_line} {word}".strip()
+            if self.font.size(test_line)[0] <= max_width:
+                current_line = test_line
+            else:
+                if current_line:
+                    lines.append(current_line)
+                current_line = word
+        if current_line:
+            lines.append(current_line)
+        return lines
+
+    def draw(self, surface):
+        if not self.visible:
+            return
+        rect = pygame.Rect(self.position, self.size)
+        bubble_color = (25, 25, 35)
+        border_color = lighten_color(bubble_color, 0.3)
+        pygame.draw.rect(surface, bubble_color, rect, border_radius=16)
+        pygame.draw.rect(surface, border_color, rect, width=2, border_radius=16)
+        tail = [
+            (rect.left + 60, rect.bottom),
+            (rect.left + 90, rect.bottom),
+            (rect.left + 75, rect.bottom + 18),
+        ]
+        pygame.draw.polygon(surface, bubble_color, tail)
+        pygame.draw.polygon(surface, border_color, tail, width=2)
+
+        speaker_font = pygame.font.Font(None, 26)
+        speaker_font.set_bold(True)
+        speaker_surface = speaker_font.render(self.speaker, True, lighten_color(self.text_color, 0.2))
+        surface.blit(speaker_surface, (rect.x + self.padding, rect.y + self.padding))
+
+        text_area_width = rect.width - self.padding * 2
+        lines = self._wrap_text(self.current_text, text_area_width)
+        y_offset = rect.y + self.padding + 28
+        for line in lines:
+            text_surface = self.font.render(line, True, self.text_color)
+            surface.blit(text_surface, (rect.x + self.padding, y_offset))
+            y_offset += text_surface.get_height() + 4
