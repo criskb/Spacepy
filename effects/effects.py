@@ -11,6 +11,8 @@ class Effects:
         self.shake_intensity = 5
         self.flash_duration = 0
         self.flash_alpha = 0
+        self.flash_center = (screen_width // 2, screen_height // 2)
+        self.flash_color = (255, 120, 120)
 
     def start_shake(self, duration=15):
         self.shake_duration = duration
@@ -26,15 +28,22 @@ class Effects:
         else:
             return surface
 
-    def start_flash(self, duration=10):
+    def start_flash(self, center, duration=12, color=(255, 120, 120)):
         self.flash_duration = duration
         self.flash_alpha = 255
+        self.flash_center = center
+        self.flash_color = color
 
     def apply_flash(self, surface):
         if self.flash_duration > 0:
-            flash_overlay = pygame.Surface((self.screen_width, self.screen_height))
-            flash_overlay.fill((255, 255, 255))
-            flash_overlay.set_alpha(self.flash_alpha)
+            flash_overlay = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
+            radius = int(max(self.screen_width, self.screen_height) * 0.35)
+            step_count = 3
+            alpha_step = max(int(self.flash_alpha / step_count), 1)
+            for i in range(step_count):
+                step_radius = int(radius * (1 - i * 0.25))
+                color = (*self.flash_color, max(self.flash_alpha - i * alpha_step, 0))
+                pygame.draw.circle(flash_overlay, color, self.flash_center, step_radius)
             self.flash_alpha -= int(255 / self.flash_duration)
             self.flash_duration -= 1
             surface.blit(flash_overlay, (0, 0))
