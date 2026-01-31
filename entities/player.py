@@ -19,6 +19,9 @@ class Player:
         self.bullets = []
         self.health = 10
         self.max_health = 10
+        self.credits = 0
+        self.wing_level = 1
+        self.weapon_level = 1
 
         # Power-up related attributes
         self.power_up_active = None  # 'rapid_fire' or 'shotgun'
@@ -74,6 +77,11 @@ class Player:
             # Normal or rapid shooting
             bullet = Bullet(self.x, self.y - self.radius, 0, -10, 1, 'player')
             self.bullets.append(bullet)
+            if self.weapon_level >= 2:
+                spread = 3 + self.weapon_level
+                left = Bullet(self.x - 6, self.y - self.radius, -spread, -10, 1, 'player')
+                right = Bullet(self.x + 6, self.y - self.radius, spread, -10, 1, 'player')
+                self.bullets.extend([left, right])
 
         return True  # Indicate that a shot was fired
 
@@ -111,6 +119,36 @@ class Player:
         body_points = [nose, right_wing, tail, left_wing]
         pygame.draw.polygon(surface, base_color, body_points)
 
+        if self.wing_level >= 2:
+            wing_extension = self.radius * (0.8 + 0.2 * self.wing_level)
+            wing_tip_left = (self.x - ship_width - wing_extension, self.y + self.radius * 0.2)
+            wing_tip_right = (self.x + ship_width + wing_extension, self.y + self.radius * 0.2)
+            pygame.draw.polygon(
+                surface,
+                darken_color(base_color, 0.1),
+                [left_wing, (self.x - ship_width * 0.4, self.y + self.radius * 0.9), wing_tip_left],
+            )
+            pygame.draw.polygon(
+                surface,
+                darken_color(base_color, 0.1),
+                [right_wing, (self.x + ship_width * 0.4, self.y + self.radius * 0.9), wing_tip_right],
+            )
+
+        if self.weapon_level >= 2:
+            pod_color = darken_color(base_color, 0.3)
+            pygame.draw.rect(
+                surface,
+                pod_color,
+                pygame.Rect(self.x - ship_width * 0.7, self.y - self.radius * 0.2, 8, 18),
+                border_radius=3,
+            )
+            pygame.draw.rect(
+                surface,
+                pod_color,
+                pygame.Rect(self.x + ship_width * 0.6, self.y - self.radius * 0.2, 8, 18),
+                border_radius=3,
+            )
+
         canopy_color = lighten_color(base_color, 0.6)
         pygame.draw.polygon(
             surface,
@@ -147,3 +185,32 @@ class Player:
         self.power_up_active = None
         self.power_up_end_time = 0
         self.last_shot_time = 0  # Reset shooting timer
+        self.credits = 0
+        self.wing_level = 1
+        self.weapon_level = 1
+
+    def add_credits(self, amount):
+        self.credits += amount
+
+    def can_afford(self, cost):
+        return self.credits >= cost
+
+    def buy_wing_upgrade(self):
+        if self.wing_level >= 3:
+            return False
+        cost = 5 * self.wing_level
+        if not self.can_afford(cost):
+            return False
+        self.credits -= cost
+        self.wing_level += 1
+        return True
+
+    def buy_weapon_upgrade(self):
+        if self.weapon_level >= 3:
+            return False
+        cost = 6 * self.weapon_level
+        if not self.can_afford(cost):
+            return False
+        self.credits -= cost
+        self.weapon_level += 1
+        return True

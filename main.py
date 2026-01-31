@@ -149,34 +149,8 @@ def main():
         radius = random.randint(1, 3)
         stars.append([x, y, speed, radius])
 
-    # Nebula wisps for dynamic background
-    nebulae = []
-    for _ in range(6):
-        x = random.randint(0, SCREEN_WIDTH)
-        y = random.randint(0, SCREEN_HEIGHT)
-        radius = random.randint(120, 260)
-        speed = random.uniform(0.2, 0.6)
-        color = (
-            random.randint(30, 80),
-            random.randint(30, 80),
-            random.randint(60, 140),
-            random.randint(40, 70),
-        )
-        nebulae.append([x, y, radius, speed, color])
-
     def draw_background(surface):
         surface.fill(current_bg_color)
-        # Nebula wisps
-        for nebula in nebulae:
-            nx, ny, nr, ns, ncolor = nebula
-            nebula_surface = pygame.Surface((nr * 2, nr * 2), pygame.SRCALPHA)
-            pygame.draw.circle(nebula_surface, ncolor, (nr, nr), nr)
-            surface.blit(nebula_surface, (nx - nr, ny - nr))
-            nebula[1] += ns
-            if nebula[1] - nr > SCREEN_HEIGHT:
-                nebula[1] = -nr
-                nebula[0] = random.randint(0, SCREEN_WIDTH)
-
         # Stars
         for star in stars:
             pygame.draw.circle(surface, WHITE, (int(star[0]), int(star[1])), star[3])
@@ -391,6 +365,10 @@ def main():
                         if player.shoot():
                             if SHOOT_SOUND:
                                 SHOOT_SOUND.play()
+                    if event.key == pygame.K_1:
+                        player.buy_weapon_upgrade()
+                    if event.key == pygame.K_2:
+                        player.buy_wing_upgrade()
                 # No need to handle movement here; it's handled in the main loop
 
             elif game_state == "game_over":
@@ -617,6 +595,7 @@ def main():
                         if EXPLOSION_SOUND:
                             EXPLOSION_SOUND.play()
                         score_display.add_score(1)
+                        player.add_credits(1)
                         enemies.remove(enemy)
                         # 5% chance to drop health item
                         if random.random() < 0.05:
@@ -635,8 +614,10 @@ def main():
                         if EXPLOSION_SOUND:
                             EXPLOSION_SOUND.play()
                         score_display.add_score(5)
+                        player.add_credits(5)
                         boss.health -= 1
                         if boss.health <= 0:
+                            player.add_credits(15)
                             boss_active = False
                             boss = None
                             boss_bullets.clear()
@@ -743,6 +724,27 @@ def main():
             # Draw UI elements
             health_bar.draw(temp_surface)
             score_display.draw(temp_surface)
+
+            # Draw credits and upgrade hints
+            credits_text = FONT.render(f"Credits: {player.credits}", True, WHITE)
+            temp_surface.blit(credits_text, (20, 110))
+            upgrade_font = pygame.font.Font(None, 24)
+            weapon_cost = 6 * player.weapon_level if player.weapon_level < 3 else None
+            wing_cost = 5 * player.wing_level if player.wing_level < 3 else None
+            weapon_label = (
+                f"[1] Weapon Mk {player.weapon_level} -> {player.weapon_level + 1} ({weapon_cost}c)"
+                if weapon_cost
+                else "[1] Weapon Max"
+            )
+            wing_label = (
+                f"[2] Wings Mk {player.wing_level} -> {player.wing_level + 1} ({wing_cost}c)"
+                if wing_cost
+                else "[2] Wings Max"
+            )
+            weapon_text = upgrade_font.render(weapon_label, True, WHITE)
+            wing_text = upgrade_font.render(wing_label, True, WHITE)
+            temp_surface.blit(weapon_text, (20, 135))
+            temp_surface.blit(wing_text, (20, 155))
 
             # Draw timer
             minutes = int(elapsed_time) // 60
