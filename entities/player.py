@@ -19,6 +19,13 @@ class Player:
         self.bullets = []
         self.health = 10
         self.max_health = 10
+        self.credits = 0
+        self.wing_level = 1
+        self.weapon_level = 1
+        self.weapon_mode = "basic"
+        self.hull_type = "arrow"
+        self.nozzle_type = "classic"
+        self.custom_color = False
 
         # Power-up related attributes
         self.power_up_active = None  # 'rapid_fire' or 'shotgun'
@@ -68,18 +75,33 @@ class Player:
                 angle = start_angle + angle_increment * i
                 dx = math.sin(angle) * 10
                 dy = -math.cos(angle) * 10
-                bullet = Bullet(self.x, self.y - self.radius, dx, dy, 1, 'player')
+                bullet = Bullet(self.x, self.y - self.radius, dx, dy, self.weapon_level, 'player')
                 self.bullets.append(bullet)
         else:
             # Normal or rapid shooting
-            bullet = Bullet(self.x, self.y - self.radius, 0, -10, 1, 'player')
-            self.bullets.append(bullet)
+            bullet_patterns = {
+                "basic": [(0, -10)],
+                "spread": [(-4, -10), (0, -10), (4, -10)],
+            }
+            for dx, dy in bullet_patterns.get(self.weapon_mode, [(0, -10)]):
+                bullet = Bullet(self.x, self.y - self.radius, dx, dy, self.weapon_level, 'player')
+                self.bullets.append(bullet)
+            if self.weapon_level >= 2 and self.weapon_mode == "spread":
+                spread = 3 + self.weapon_level
+                left = Bullet(self.x - 6, self.y - self.radius, -spread, -10, self.weapon_level, 'player')
+                right = Bullet(self.x + 6, self.y - self.radius, spread, -10, self.weapon_level, 'player')
+                self.bullets.extend([left, right])
 
         return True  # Indicate that a shot was fired
 
     def activate_power_up(self, power_type):
+        current_time = pygame.time.get_ticks()
+        duration = 30000
+        if self.power_up_active == power_type and current_time < self.power_up_end_time:
+            self.power_up_end_time += duration
+            return
         self.power_up_active = power_type
-        self.power_up_end_time = pygame.time.get_ticks() + 30000  # 30 seconds duration
+        self.power_up_end_time = current_time + duration  # 30 seconds duration
 
         if power_type == 'rapid_fire':
             # Reduce shoot delay for rapid fire
@@ -104,12 +126,56 @@ class Player:
 
         ship_length = self.radius * 1.6
         ship_width = self.radius * 1.2
-        nose = (self.x, self.y - ship_length)
-        left_wing = (self.x - ship_width, self.y + self.radius * 0.5)
-        right_wing = (self.x + ship_width, self.y + self.radius * 0.5)
-        tail = (self.x, self.y + self.radius * 1.1)
-        body_points = [nose, right_wing, tail, left_wing]
+        if self.hull_type == "diamond":
+            nose = (self.x, self.y - ship_length * 0.9)
+            right = (self.x + ship_width * 0.9, self.y)
+            tail = (self.x, self.y + self.radius * 1.2)
+            left = (self.x - ship_width * 0.9, self.y)
+            body_points = [nose, right, tail, left]
+            left_wing = left
+            right_wing = right
+        elif self.hull_type == "delta":
+            nose = (self.x, self.y - ship_length)
+            left_wing = (self.x - ship_width * 1.2, self.y + self.radius * 0.8)
+            right_wing = (self.x + ship_width * 1.2, self.y + self.radius * 0.8)
+            body_points = [nose, right_wing, left_wing]
+        else:
+            nose = (self.x, self.y - ship_length)
+            left_wing = (self.x - ship_width, self.y + self.radius * 0.5)
+            right_wing = (self.x + ship_width, self.y + self.radius * 0.5)
+            tail = (self.x, self.y + self.radius * 1.1)
+            body_points = [nose, right_wing, tail, left_wing]
         pygame.draw.polygon(surface, base_color, body_points)
+
+        if self.wing_level >= 2:
+            wing_extension = self.radius * (0.8 + 0.2 * self.wing_level)
+            wing_tip_left = (self.x - ship_width - wing_extension, self.y + self.radius * 0.2)
+            wing_tip_right = (self.x + ship_width + wing_extension, self.y + self.radius * 0.2)
+            pygame.draw.polygon(
+                surface,
+                darken_color(base_color, 0.1),
+                [left_wing, (self.x - ship_width * 0.4, self.y + self.radius * 0.9), wing_tip_left],
+            )
+            pygame.draw.polygon(
+                surface,
+                darken_color(base_color, 0.1),
+                [right_wing, (self.x + ship_width * 0.4, self.y + self.radius * 0.9), wing_tip_right],
+            )
+
+        if self.weapon_level >= 2:
+            pod_color = darken_color(base_color, 0.3)
+            pygame.draw.rect(
+                surface,
+                pod_color,
+                pygame.Rect(self.x - ship_width * 0.7, self.y - self.radius * 0.2, 8, 18),
+                border_radius=3,
+            )
+            pygame.draw.rect(
+                surface,
+                pod_color,
+                pygame.Rect(self.x + ship_width * 0.6, self.y - self.radius * 0.2, 8, 18),
+                border_radius=3,
+            )
 
         canopy_color = lighten_color(base_color, 0.6)
         pygame.draw.polygon(
@@ -127,15 +193,39 @@ class Player:
         pygame.draw.polygon(surface, outline_color, body_points, width=2)
 
         thruster_color = (80, 200, 255)
-        pygame.draw.polygon(
-            surface,
-            thruster_color,
-            [
-                (self.x - ship_width * 0.35, self.y + self.radius * 0.9),
-                (self.x + ship_width * 0.35, self.y + self.radius * 0.9),
-                (self.x, self.y + self.radius * 1.5),
-            ],
-        )
+        if self.nozzle_type == "vector":
+            pygame.draw.polygon(
+                surface,
+                thruster_color,
+                [
+                    (self.x - ship_width * 0.45, self.y + self.radius * 0.8),
+                    (self.x + ship_width * 0.45, self.y + self.radius * 0.8),
+                    (self.x, self.y + self.radius * 1.6),
+                ],
+            )
+        elif self.nozzle_type == "dual":
+            pygame.draw.rect(
+                surface,
+                thruster_color,
+                pygame.Rect(self.x - ship_width * 0.5, self.y + self.radius * 0.9, 8, 18),
+                border_radius=3,
+            )
+            pygame.draw.rect(
+                surface,
+                thruster_color,
+                pygame.Rect(self.x + ship_width * 0.3, self.y + self.radius * 0.9, 8, 18),
+                border_radius=3,
+            )
+        else:
+            pygame.draw.polygon(
+                surface,
+                thruster_color,
+                [
+                    (self.x - ship_width * 0.35, self.y + self.radius * 0.9),
+                    (self.x + ship_width * 0.35, self.y + self.radius * 0.9),
+                    (self.x, self.y + self.radius * 1.5),
+                ],
+            )
 
     def reset(self):
         self.x = self.screen_width // 2
@@ -147,3 +237,44 @@ class Player:
         self.power_up_active = None
         self.power_up_end_time = 0
         self.last_shot_time = 0  # Reset shooting timer
+        self.weapon_mode = "basic"
+
+    def add_credits(self, amount):
+        self.credits += amount
+
+    def can_afford(self, cost):
+        return self.credits >= cost
+
+    def buy_wing_upgrade(self):
+        if self.wing_level >= 3:
+            return False
+        cost = 5 * self.wing_level
+        if not self.can_afford(cost):
+            return False
+        self.credits -= cost
+        self.wing_level += 1
+        return True
+
+    def buy_weapon_upgrade(self):
+        if self.weapon_level >= 3:
+            return False
+        cost = 6 * self.weapon_level
+        if not self.can_afford(cost):
+            return False
+        self.credits -= cost
+        self.weapon_level += 1
+        return True
+
+    def set_weapon_mode(self, mode):
+        if mode in {"basic", "spread"}:
+            self.weapon_mode = mode
+
+    def clone_for_preview(self, x, y):
+        preview = Player(x, y, self.color, self.screen_width, self.screen_height)
+        preview.wing_level = self.wing_level
+        preview.weapon_level = self.weapon_level
+        preview.weapon_mode = self.weapon_mode
+        preview.hull_type = self.hull_type
+        preview.nozzle_type = self.nozzle_type
+        preview.custom_color = self.custom_color
+        return preview

@@ -41,6 +41,8 @@ class Asteroid:
 
         # Generate irregular polygon points
         self.num_vertices = random.randint(8, 12)
+        self.vertex_angles = self.generate_vertex_angles()
+        self.vertex_radii = self.generate_vertex_radii()
         self.vertices = self.generate_irregular_polygon()
 
         # Craters configuration
@@ -73,15 +75,28 @@ class Asteroid:
         :return: List of (x, y) tuples representing the polygon vertices.
         """
         points = []
-        angle_between_vertices = 360 / self.num_vertices
-        for i in range(self.num_vertices):
-            angle_deg = angle_between_vertices * i + random.uniform(-angle_between_vertices/4, angle_between_vertices/4)
-            angle_rad = math.radians(angle_deg)
-            radius_variation = random.uniform(0.7, 1.3) * self.radius_outer
-            px = self.x + radius_variation * math.cos(angle_rad)
-            py = self.y + radius_variation * math.sin(angle_rad)
+        for angle_deg, radius in zip(self.vertex_angles, self.vertex_radii):
+            angle_rad = math.radians(angle_deg + self.angle)
+            px = self.x + radius * math.cos(angle_rad)
+            py = self.y + radius * math.sin(angle_rad)
             points.append((px, py))
         return points
+
+    def generate_vertex_angles(self):
+        """
+        Generate stable vertex angles for the asteroid silhouette.
+        """
+        angle_between_vertices = 360 / self.num_vertices
+        return [
+            angle_between_vertices * i + random.uniform(-angle_between_vertices / 4, angle_between_vertices / 4)
+            for i in range(self.num_vertices)
+        ]
+
+    def generate_vertex_radii(self):
+        """
+        Generate stable radius offsets for each vertex to avoid shape jitter.
+        """
+        return [random.uniform(0.75, 1.25) * self.radius_outer for _ in range(self.num_vertices)]
 
     def generate_craters(self):
         """
@@ -101,7 +116,8 @@ class Asteroid:
                 'x': crater_x,
                 'y': crater_y,
                 'size': crater_size,
-                'angle': angle  # For potential future use (e.g., animation)
+                'angle': angle,  # For potential future use (e.g., animation)
+                'distance': distance,
             })
 
     def move(self):
@@ -133,13 +149,10 @@ class Asteroid:
         Update the positions of the polygon vertices based on the current rotation angle.
         """
         self.vertices = []
-        angle_between_vertices = 360 / self.num_vertices
-        for i in range(self.num_vertices):
-            angle_deg = angle_between_vertices * i + random.uniform(-angle_between_vertices/4, angle_between_vertices/4) + self.angle
-            angle_rad = math.radians(angle_deg)
-            radius_variation = random.uniform(0.7, 1.3) * self.radius_outer
-            px = self.x + radius_variation * math.cos(angle_rad)
-            py = self.y + radius_variation * math.sin(angle_rad)
+        for angle_deg, radius in zip(self.vertex_angles, self.vertex_radii):
+            angle_rad = math.radians(angle_deg + self.angle)
+            px = self.x + radius * math.cos(angle_rad)
+            py = self.y + radius * math.sin(angle_rad)
             self.vertices.append((px, py))
 
     def update_craters(self):
@@ -148,9 +161,9 @@ class Asteroid:
         """
         for crater in self.craters:
             angle = crater['angle']
-            distance = random.uniform(self.radius_inner + crater['size'], self.radius_outer - crater['size'])
-            crater['x'] = self.x + distance * math.cos(angle)
-            crater['y'] = self.y + distance * math.sin(angle)
+            distance = crater['distance']
+            crater['x'] = self.x + distance * math.cos(angle + math.radians(self.angle))
+            crater['y'] = self.y + distance * math.sin(angle + math.radians(self.angle))
 
     def rotate(self):
         """
@@ -178,6 +191,26 @@ class Asteroid:
         if len(self.vertices) >= 3:
             pygame.draw.polygon(surface, self.color_outer, self.vertices)
             pygame.draw.polygon(surface, self.color_inner, self.vertices, width=2)  # Inner outline for depth
+            overlay = pygame.Surface((self.radius_outer * 4, self.radius_outer * 4), pygame.SRCALPHA)
+            overlay_center = (overlay.get_width() // 2, overlay.get_height() // 2)
+            shadow_color = (*self.apply_tint((10, 10, 10), self.bg_color), 90)
+            shadow_offset = (int(self.radius_outer * 0.2), int(self.radius_outer * 0.2))
+            shadow_vertices = [
+                (
+                    overlay_center[0] + (vx - self.x) + shadow_offset[0],
+                    overlay_center[1] + (vy - self.y) + shadow_offset[1],
+                )
+                for vx, vy in self.vertices
+            ]
+            pygame.draw.polygon(overlay, shadow_color, shadow_vertices, width=0)
+            highlight_color = (*self.apply_tint((180, 180, 180), self.bg_color), 110)
+            pygame.draw.circle(
+                overlay,
+                highlight_color,
+                (overlay_center[0] - int(self.radius_outer * 0.2), overlay_center[1] - int(self.radius_outer * 0.2)),
+                int(self.radius_outer * 0.35),
+            )
+            surface.blit(overlay, (int(self.x - overlay_center[0]), int(self.y - overlay_center[1])))
 
         # Draw craters
         for crater in self.craters:
