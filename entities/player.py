@@ -263,3 +263,13 @@ class Player:
     def set_weapon_mode(self, mode):
         if mode in {"basic", "spread"}:
             self.weapon_mode = mode
+
+    def clone_for_preview(self, x, y):
+        preview = Player(x, y, self.color, self.screen_width, self.screen_height)
+        preview.wing_level = self.wing_level
+        preview.weapon_level = self.weapon_level
+        preview.weapon_mode = self.weapon_mode
+        preview.hull_type = self.hull_type
+        preview.nozzle_type = self.nozzle_type
+        preview.custom_color = self.custom_color
+        return preview
