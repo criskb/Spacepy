@@ -110,12 +110,22 @@ def main():
         WHITE
     )
 
+    ship_builder_button = Button(
+        "Ship Builder",
+        button_font,
+        (72, 61, 139),       # Dark Slate Blue
+        (106, 90, 205),      # Slate Blue
+        (SCREEN_WIDTH // 2 - 140, SCREEN_HEIGHT // 2 + 170),
+        (280, 50),
+        WHITE
+    )
+
     quit_button = Button(
         "Quit",
         button_font,
         (178, 34, 34),       # Firebrick
         (220, 20, 60),       # Crimson
-        (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 170),
+        (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 240),
         (200, 50),
         WHITE
     )
@@ -137,6 +147,36 @@ def main():
         (220, 20, 60),       # Crimson
         (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 220 + 100),
         (200, 50),
+        WHITE
+    )
+
+    builder_back_button = Button(
+        "Back",
+        button_font,
+        (70, 130, 180),
+        (100, 149, 237),
+        (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT - 120),
+        (200, 50),
+        WHITE
+    )
+
+    builder_weapon_button = Button(
+        "Upgrade Weapon",
+        button_font,
+        (46, 139, 87),
+        (60, 179, 113),
+        (SCREEN_WIDTH // 2 - 220, SCREEN_HEIGHT // 2 + 40),
+        (240, 50),
+        WHITE
+    )
+
+    builder_wing_button = Button(
+        "Upgrade Wings",
+        button_font,
+        (46, 139, 87),
+        (60, 179, 113),
+        (SCREEN_WIDTH // 2 + 20, SCREEN_HEIGHT // 2 + 40),
+        (240, 50),
         WHITE
     )
 
@@ -352,6 +392,8 @@ def main():
                     dialog_bubble.visible = False
                     # Spawn initial enemies
                     spawn_enemies(initial=True)
+                if ship_builder_button.is_clicked(event):
+                    game_state = "ship_builder"
                 if quit_button.is_clicked(event):
                     pygame.quit()
                     sys.exit()
@@ -365,10 +407,12 @@ def main():
                         if player.shoot():
                             if SHOOT_SOUND:
                                 SHOOT_SOUND.play()
-                    if event.key == pygame.K_1:
-                        player.buy_weapon_upgrade()
-                    if event.key == pygame.K_2:
-                        player.buy_wing_upgrade()
+                    if event.key == pygame.K_z:
+                        player.set_weapon_mode("basic")
+                    if event.key == pygame.K_x:
+                        player.set_weapon_mode("spread")
+                    if event.key == pygame.K_c:
+                        player.set_weapon_mode("burst")
                 # No need to handle movement here; it's handled in the main loop
 
             elif game_state == "game_over":
@@ -408,6 +452,13 @@ def main():
                 if game_over_quit_button.is_clicked(event):
                     pygame.quit()
                     sys.exit()
+            elif game_state == "ship_builder":
+                if builder_back_button.is_clicked(event):
+                    game_state = "menu"
+                if builder_weapon_button.is_clicked(event):
+                    player.buy_weapon_upgrade()
+                if builder_wing_button.is_clicked(event):
+                    player.buy_wing_upgrade()
 
         if game_state == "countdown":
             # Calculate countdown number based on time elapsed
@@ -725,26 +776,13 @@ def main():
             health_bar.draw(temp_surface)
             score_display.draw(temp_surface)
 
-            # Draw credits and upgrade hints
+            # Draw credits and weapon hints
             credits_text = FONT.render(f"Credits: {player.credits}", True, WHITE)
             temp_surface.blit(credits_text, (20, 110))
             upgrade_font = pygame.font.Font(None, 24)
-            weapon_cost = 6 * player.weapon_level if player.weapon_level < 3 else None
-            wing_cost = 5 * player.wing_level if player.wing_level < 3 else None
-            weapon_label = (
-                f"[1] Weapon Mk {player.weapon_level} -> {player.weapon_level + 1} ({weapon_cost}c)"
-                if weapon_cost
-                else "[1] Weapon Max"
-            )
-            wing_label = (
-                f"[2] Wings Mk {player.wing_level} -> {player.wing_level + 1} ({wing_cost}c)"
-                if wing_cost
-                else "[2] Wings Max"
-            )
-            weapon_text = upgrade_font.render(weapon_label, True, WHITE)
-            wing_text = upgrade_font.render(wing_label, True, WHITE)
-            temp_surface.blit(weapon_text, (20, 135))
-            temp_surface.blit(wing_text, (20, 155))
+            mode_label = f"Weapon: {player.weapon_mode.title()} [Z/X/C]"
+            mode_text = upgrade_font.render(mode_label, True, WHITE)
+            temp_surface.blit(mode_text, (20, 135))
 
             # Draw timer
             minutes = int(elapsed_time) // 60
@@ -818,6 +856,7 @@ def main():
             temp_surface.blit(title_text, title_rect)
             # Draw buttons
             play_button.draw(temp_surface)
+            ship_builder_button.draw(temp_surface)
             quit_button.draw(temp_surface)
 
             # Blit the temporary surface onto the main screen
@@ -854,6 +893,51 @@ def main():
             game_over_quit_button.draw(temp_surface)
 
             # Blit the temporary surface onto the main screen
+            SCREEN.blit(temp_surface, (0, 0))
+
+        elif game_state == "ship_builder":
+            temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            draw_background(temp_surface)
+            title_font = pygame.font.Font(None, 70)
+            title_font.set_bold(True)
+            title_text = title_font.render("Ship Builder", True, WHITE)
+            title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 180))
+            temp_surface.blit(title_text, title_rect)
+
+            credits_text = FONT.render(f"Credits: {player.credits}", True, WHITE)
+            temp_surface.blit(credits_text, (40, 40))
+
+            info_font = pygame.font.Font(None, 32)
+            weapon_cost = 6 * player.weapon_level if player.weapon_level < 3 else None
+            wing_cost = 5 * player.wing_level if player.wing_level < 3 else None
+            weapon_info = (
+                f"Weapon Mk {player.weapon_level} -> {player.weapon_level + 1} ({weapon_cost}c)"
+                if weapon_cost
+                else "Weapon Mk 3 (Max)"
+            )
+            wing_info = (
+                f"Wings Mk {player.wing_level} -> {player.wing_level + 1} ({wing_cost}c)"
+                if wing_cost
+                else "Wings Mk 3 (Max)"
+            )
+            weapon_info_text = info_font.render(weapon_info, True, WHITE)
+            wing_info_text = info_font.render(wing_info, True, WHITE)
+            temp_surface.blit(weapon_info_text, (SCREEN_WIDTH // 2 - 220, SCREEN_HEIGHT // 2 - 20))
+            temp_surface.blit(wing_info_text, (SCREEN_WIDTH // 2 + 20, SCREEN_HEIGHT // 2 - 20))
+
+            tips_font = pygame.font.Font(None, 28)
+            tips = [
+                "Weapon modes: Z (Basic), X (Spread), C (Burst)",
+                "Upgrades apply to your ship and weapons.",
+            ]
+            for idx, tip in enumerate(tips):
+                tip_text = tips_font.render(tip, True, WHITE)
+                temp_surface.blit(tip_text, (SCREEN_WIDTH // 2 - 220, SCREEN_HEIGHT // 2 + 110 + idx * 28))
+
+            builder_weapon_button.draw(temp_surface)
+            builder_wing_button.draw(temp_surface)
+            builder_back_button.draw(temp_surface)
+
             SCREEN.blit(temp_surface, (0, 0))
 
         pygame.display.flip()

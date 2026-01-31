@@ -22,6 +22,7 @@ class Player:
         self.credits = 0
         self.wing_level = 1
         self.weapon_level = 1
+        self.weapon_mode = "basic"
 
         # Power-up related attributes
         self.power_up_active = None  # 'rapid_fire' or 'shotgun'
@@ -71,16 +72,22 @@ class Player:
                 angle = start_angle + angle_increment * i
                 dx = math.sin(angle) * 10
                 dy = -math.cos(angle) * 10
-                bullet = Bullet(self.x, self.y - self.radius, dx, dy, 1, 'player')
+                bullet = Bullet(self.x, self.y - self.radius, dx, dy, self.weapon_level, 'player')
                 self.bullets.append(bullet)
         else:
             # Normal or rapid shooting
-            bullet = Bullet(self.x, self.y - self.radius, 0, -10, 1, 'player')
-            self.bullets.append(bullet)
+            bullet_patterns = {
+                "basic": [(0, -10)],
+                "spread": [(-4, -10), (0, -10), (4, -10)],
+                "burst": [(-6, -10), (-3, -10), (0, -10), (3, -10), (6, -10)],
+            }
+            for dx, dy in bullet_patterns.get(self.weapon_mode, [(0, -10)]):
+                bullet = Bullet(self.x, self.y - self.radius, dx, dy, self.weapon_level, 'player')
+                self.bullets.append(bullet)
             if self.weapon_level >= 2:
                 spread = 3 + self.weapon_level
-                left = Bullet(self.x - 6, self.y - self.radius, -spread, -10, 1, 'player')
-                right = Bullet(self.x + 6, self.y - self.radius, spread, -10, 1, 'player')
+                left = Bullet(self.x - 6, self.y - self.radius, -spread, -10, self.weapon_level, 'player')
+                right = Bullet(self.x + 6, self.y - self.radius, spread, -10, self.weapon_level, 'player')
                 self.bullets.extend([left, right])
 
         return True  # Indicate that a shot was fired
@@ -185,9 +192,7 @@ class Player:
         self.power_up_active = None
         self.power_up_end_time = 0
         self.last_shot_time = 0  # Reset shooting timer
-        self.credits = 0
-        self.wing_level = 1
-        self.weapon_level = 1
+        self.weapon_mode = "basic"
 
     def add_credits(self, amount):
         self.credits += amount
@@ -214,3 +219,7 @@ class Player:
         self.credits -= cost
         self.weapon_level += 1
         return True
+
+    def set_weapon_mode(self, mode):
+        if mode in {"basic", "spread", "burst"}:
+            self.weapon_mode = mode
