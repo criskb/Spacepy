@@ -446,6 +446,37 @@ def main():
             dialog_bubble.start(speaker, text, current_time)
         dialog_bubble.update(current_time)
 
+    def layout_ship_builder():
+        left_panel = pygame.Rect(40, 140, 360, SCREEN_HEIGHT - 220)
+        right_panel = pygame.Rect(SCREEN_WIDTH - 400, 140, 360, SCREEN_HEIGHT - 220)
+        center_panel = pygame.Rect(420, 140, SCREEN_WIDTH - 840, SCREEN_HEIGHT - 220)
+
+        button_x = right_panel.x + 20
+        button_y = right_panel.y + 70
+        for button in [
+            builder_hull_prev,
+            builder_hull_next,
+            builder_color_prev,
+            builder_color_next,
+            builder_nozzle_prev,
+            builder_nozzle_next,
+        ]:
+            button.position = (button_x, button_y)
+            button.rect.topleft = button.position
+            button_y += 58
+
+        builder_weapon_button.position = (left_panel.x + 20, left_panel.y + 420)
+        builder_weapon_button.rect.topleft = builder_weapon_button.position
+
+        builder_wing_button.position = (left_panel.x + 20, left_panel.y + 490)
+        builder_wing_button.rect.topleft = builder_wing_button.position
+
+        builder_confirm_button.position = (center_panel.x + 30, center_panel.y + 420)
+        builder_confirm_button.rect.topleft = builder_confirm_button.position
+
+        builder_back_button.position = (SCREEN_WIDTH - 240, SCREEN_HEIGHT - 100)
+        builder_back_button.rect.topleft = builder_back_button.position
+
     # Function to spawn an asteroid
     def spawn_asteroid():
         asteroid_x = random.randint(50, SCREEN_WIDTH - 50)
@@ -601,6 +632,7 @@ def main():
                     pygame.quit()
                     sys.exit()
             elif game_state == "ship_builder":
+                layout_ship_builder()
                 if builder_back_button.is_clicked(event):
                     persist_save()
                     game_state = "menu"
@@ -1112,43 +1144,29 @@ def main():
         elif game_state == "ship_builder":
             temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
             draw_background(temp_surface)
+
             title_font = pygame.font.Font(None, 70)
             title_font.set_bold(True)
             title_text = title_font.render("Ship Builder", True, WHITE)
-            title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 180))
+            title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 70))
             temp_surface.blit(title_text, title_rect)
 
             credits_text = FONT.render(f"Credits: {player.credits}", True, WHITE)
             temp_surface.blit(credits_text, (40, 40))
 
-            info_font = pygame.font.Font(None, 32)
-            weapon_cost = 6 * player.weapon_level if player.weapon_level < 3 else None
-            wing_cost = 5 * player.wing_level if player.wing_level < 3 else None
-            weapon_info = (
-                f"Weapon Mk {player.weapon_level} -> {player.weapon_level + 1} ({weapon_cost}c)"
-                if weapon_cost
-                else "Weapon Mk 3 (Max)"
-            )
-            wing_info = (
-                f"Wings Mk {player.wing_level} -> {player.wing_level + 1} ({wing_cost}c)"
-                if wing_cost
-                else "Wings Mk 3 (Max)"
-            )
-            weapon_info_text = info_font.render(weapon_info, True, WHITE)
-            wing_info_text = info_font.render(wing_info, True, WHITE)
-            temp_surface.blit(weapon_info_text, (SCREEN_WIDTH // 2 - 220, SCREEN_HEIGHT // 2 - 20))
-            temp_surface.blit(wing_info_text, (SCREEN_WIDTH // 2 + 20, SCREEN_HEIGHT // 2 - 20))
+            panel_color = (20, 20, 30)
+            panel_border = (120, 120, 140)
 
-            tips_font = pygame.font.Font(None, 28)
-            tips = [
-                "Weapon modes: Z (Basic), X (Spread)",
-                "Select parts, then confirm to buy/apply.",
-            ]
-            for idx, tip in enumerate(tips):
-                tip_text = tips_font.render(tip, True, WHITE)
-                temp_surface.blit(tip_text, (SCREEN_WIDTH // 2 - 220, SCREEN_HEIGHT // 2 + 110 + idx * 28))
+            left_panel = pygame.Rect(40, 140, 360, SCREEN_HEIGHT - 220)
+            right_panel = pygame.Rect(SCREEN_WIDTH - 400, 140, 360, SCREEN_HEIGHT - 220)
+            center_panel = pygame.Rect(420, 140, SCREEN_WIDTH - 840, SCREEN_HEIGHT - 220)
+            for panel in [left_panel, center_panel, right_panel]:
+                pygame.draw.rect(temp_surface, panel_color, panel, border_radius=16)
+                pygame.draw.rect(temp_surface, panel_border, panel, width=2, border_radius=16)
 
-            preview_player = Player(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 110, player.color, SCREEN_WIDTH, SCREEN_HEIGHT)
+            preview_x = center_panel.centerx
+            preview_y = center_panel.y + 160
+            preview_player = Player(preview_x, preview_y, player.color, SCREEN_WIDTH, SCREEN_HEIGHT)
             preview_player.wing_level = player.wing_level
             preview_player.weapon_level = player.weapon_level
             preview_player.hull_type = selected_hull
@@ -1169,9 +1187,9 @@ def main():
             hull_text = selection_font.render(f"Hull: {hull_option['label']} ({hull_status})", True, WHITE)
             color_text = selection_font.render(f"Color: {color_option['label']} ({color_status})", True, WHITE)
             nozzle_text = selection_font.render(f"Nozzle: {nozzle_option['label']} ({nozzle_status})", True, WHITE)
-            temp_surface.blit(hull_text, (SCREEN_WIDTH // 2 - 140, SCREEN_HEIGHT // 2 - 90))
-            temp_surface.blit(color_text, (SCREEN_WIDTH // 2 - 140, SCREEN_HEIGHT // 2 - 60))
-            temp_surface.blit(nozzle_text, (SCREEN_WIDTH // 2 - 140, SCREEN_HEIGHT // 2 - 30))
+            temp_surface.blit(hull_text, (center_panel.x + 30, center_panel.y + 260))
+            temp_surface.blit(color_text, (center_panel.x + 30, center_panel.y + 295))
+            temp_surface.blit(nozzle_text, (center_panel.x + 30, center_panel.y + 330))
 
             pending_cost = 0
             if not hull_owned:
@@ -1182,18 +1200,117 @@ def main():
                 pending_cost += nozzle_option["cost"]
             confirm_label = f"Confirm ({pending_cost}c)" if pending_cost else "Confirm (Owned)"
             confirm_text = selection_font.render(confirm_label, True, WHITE)
-            temp_surface.blit(confirm_text, (SCREEN_WIDTH // 2 - 120, SCREEN_HEIGHT // 2 + 190))
+            temp_surface.blit(confirm_text, (center_panel.x + 30, center_panel.y + 380))
 
-            builder_hull_prev.draw(temp_surface)
-            builder_hull_next.draw(temp_surface)
-            builder_color_prev.draw(temp_surface)
-            builder_color_next.draw(temp_surface)
-            builder_nozzle_prev.draw(temp_surface)
-            builder_nozzle_next.draw(temp_surface)
-            builder_weapon_button.draw(temp_surface)
-            builder_wing_button.draw(temp_surface)
-            builder_confirm_button.draw(temp_surface)
-            builder_back_button.draw(temp_surface)
+            left_header_font = pygame.font.Font(None, 36)
+            left_header_font.set_bold(True)
+            upgrades_title = left_header_font.render("Upgrades", True, WHITE)
+            temp_surface.blit(upgrades_title, (left_panel.x + 20, left_panel.y + 20))
+
+            info_font = pygame.font.Font(None, 28)
+            weapon_cost = 6 * player.weapon_level if player.weapon_level < 3 else None
+            wing_cost = 5 * player.wing_level if player.wing_level < 3 else None
+            weapon_info = (
+                f"Weapon Mk {player.weapon_level} -> {player.weapon_level + 1} ({weapon_cost}c)"
+                if weapon_cost
+                else "Weapon Mk 3 (Max)"
+            )
+            wing_info = (
+                f"Wings Mk {player.wing_level} -> {player.wing_level + 1} ({wing_cost}c)"
+                if wing_cost
+                else "Wings Mk 3 (Max)"
+            )
+            weapon_info_text = info_font.render(weapon_info, True, WHITE)
+            wing_info_text = info_font.render(wing_info, True, WHITE)
+            temp_surface.blit(weapon_info_text, (left_panel.x + 20, left_panel.y + 70))
+            temp_surface.blit(wing_info_text, (left_panel.x + 20, left_panel.y + 110))
+
+            tips_font = pygame.font.Font(None, 26)
+            tips = [
+                "Weapon modes: Z (Basic), X (Spread)",
+                "Select parts, then confirm to buy/apply.",
+                "Owned items are free to swap.",
+            ]
+            for idx, tip in enumerate(tips):
+                tip_text = tips_font.render(tip, True, WHITE)
+                temp_surface.blit(tip_text, (left_panel.x + 20, left_panel.y + 170 + idx * 26))
+
+            stats_title = left_header_font.render("Current Build", True, WHITE)
+            temp_surface.blit(stats_title, (left_panel.x + 20, left_panel.y + 270))
+            current_color_id = next(
+                (c["id"] for c in color_options if c["color"] == player.color),
+                selected_color,
+            )
+            stats_text = [
+                f"Hull: {get_option(hull_options, player.hull_type)['label']}",
+                f"Nozzle: {get_option(nozzle_options, player.nozzle_type)['label']}",
+                f"Color: {get_option(color_options, current_color_id)['label']}",
+                f"Weapon Mk {player.weapon_level}",
+                f"Wings Mk {player.wing_level}",
+            ]
+            for idx, line in enumerate(stats_text):
+                line_text = info_font.render(line, True, WHITE)
+                temp_surface.blit(line_text, (left_panel.x + 20, left_panel.y + 310 + idx * 26))
+
+            stat_label_font = pygame.font.Font(None, 26)
+            stat_bar_x = center_panel.x + 30
+            stat_bar_y = center_panel.y + 470
+            stat_width = center_panel.width - 60
+            stat_height = 12
+            agility = min(player.wing_level / 3, 1)
+            firepower = min(player.weapon_level / 3, 1)
+            for label, value, offset in [
+                ("Agility", agility, 0),
+                ("Firepower", firepower, 28),
+            ]:
+                label_text = stat_label_font.render(label, True, WHITE)
+                temp_surface.blit(label_text, (stat_bar_x, stat_bar_y + offset - 18))
+                pygame.draw.rect(
+                    temp_surface,
+                    (60, 60, 60),
+                    (stat_bar_x, stat_bar_y + offset, stat_width, stat_height),
+                    border_radius=6,
+                )
+                pygame.draw.rect(
+                    temp_surface,
+                    (0, 200, 160),
+                    (stat_bar_x, stat_bar_y + offset, stat_width * value, stat_height),
+                    border_radius=6,
+                )
+
+            right_header_font = pygame.font.Font(None, 36)
+            right_header_font.set_bold(True)
+            options_title = right_header_font.render("Options", True, WHITE)
+            temp_surface.blit(options_title, (right_panel.x + 20, right_panel.y + 20))
+
+            swatch_y = right_panel.y + 420
+            swatch_x = right_panel.x + 20
+            swatch_size = 24
+            swatch_spacing = 10
+            swatch_label = pygame.font.Font(None, 24).render("Colors", True, WHITE)
+            temp_surface.blit(swatch_label, (swatch_x, swatch_y - 26))
+            for color_option in color_options:
+                color_rect = pygame.Rect(swatch_x, swatch_y, swatch_size, swatch_size)
+                pygame.draw.rect(temp_surface, color_option["color"], color_rect, border_radius=4)
+                is_selected = color_option["id"] == selected_color
+                border = (255, 255, 255) if is_selected else (120, 120, 120)
+                pygame.draw.rect(temp_surface, border, color_rect, width=2, border_radius=4)
+                swatch_x += swatch_size + swatch_spacing
+
+            layout_ship_builder()
+            for button in [
+                builder_hull_prev,
+                builder_hull_next,
+                builder_color_prev,
+                builder_color_next,
+                builder_nozzle_prev,
+                builder_nozzle_next,
+                builder_weapon_button,
+                builder_wing_button,
+                builder_confirm_button,
+                builder_back_button,
+            ]:
+                button.draw(temp_surface)
 
             SCREEN.blit(temp_surface, (0, 0))
 
