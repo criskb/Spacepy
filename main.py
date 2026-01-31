@@ -5,6 +5,7 @@ import sys
 import os
 import random
 import math
+import json
 
 from utils import get_random_dark_color, get_opposite_color, is_collision, load_sound
 from entities.player import Player
@@ -15,7 +16,8 @@ from entities.asteroid import Asteroid
 from entities.health_item import HealthItem
 from entities.power_up import PowerUp
 from effects.effects import Effects
-from ui.ui import Button, HealthBar, ScoreDisplay
+from ui.ui import Button, HealthBar, ScoreDisplay, DialogBubble
+from ui.ship_builder import draw_ship_builder
 
 # Initialize Pygame
 pygame.init()
@@ -85,6 +87,17 @@ def main():
     # Effects
     effects = Effects(SCREEN_WIDTH, SCREEN_HEIGHT)
 
+    # Dialogue bubble
+    dialog_font = pygame.font.Font(None, 28)
+    dialog_width = max(360, int(SCREEN_WIDTH * 0.33))
+    dialog_bubble = DialogBubble(
+        dialog_font,
+        (30, SCREEN_HEIGHT - 170),
+        (dialog_width, 130),
+    )
+    dialog_queue = []
+    intro_dialog_shown = False
+
     # Buttons
     button_font = pygame.font.Font(None, 52)
     button_font.set_bold(True)
@@ -99,12 +112,22 @@ def main():
         WHITE
     )
 
+    ship_builder_button = Button(
+        "Ship Builder",
+        button_font,
+        (72, 61, 139),       # Dark Slate Blue
+        (106, 90, 205),      # Slate Blue
+        (SCREEN_WIDTH // 2 - 140, SCREEN_HEIGHT // 2 + 170),
+        (280, 50),
+        WHITE
+    )
+
     quit_button = Button(
         "Quit",
         button_font,
         (178, 34, 34),       # Firebrick
         (220, 20, 60),       # Crimson
-        (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 170),
+        (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 240),
         (200, 50),
         WHITE
     )
@@ -129,6 +152,183 @@ def main():
         WHITE
     )
 
+    builder_back_button = Button(
+        "Back",
+        button_font,
+        (70, 130, 180),
+        (100, 149, 237),
+        (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT - 120),
+        (200, 50),
+        WHITE
+    )
+
+    builder_weapon_button = Button(
+        "Upgrade Weapon",
+        button_font,
+        (46, 139, 87),
+        (60, 179, 113),
+        (SCREEN_WIDTH // 2 - 220, SCREEN_HEIGHT // 2 + 40),
+        (320, 50),
+        WHITE
+    )
+
+    builder_wing_button = Button(
+        "Upgrade Wings",
+        button_font,
+        (46, 139, 87),
+        (60, 179, 113),
+        (SCREEN_WIDTH // 2 + 20, SCREEN_HEIGHT // 2 + 40),
+        (320, 50),
+        WHITE
+    )
+
+    builder_confirm_button = Button(
+        "Confirm Loadout",
+        button_font,
+        (72, 61, 139),
+        (106, 90, 205),
+        (SCREEN_WIDTH // 2 - 160, SCREEN_HEIGHT // 2 + 140),
+        (320, 50),
+        WHITE
+    )
+
+    builder_hull_prev = Button(
+        "<",
+        button_font,
+        (90, 90, 90),
+        (120, 120, 120),
+        (SCREEN_WIDTH // 2 - 300, SCREEN_HEIGHT // 2 - 40),
+        (60, 45),
+        WHITE
+    )
+    builder_hull_next = Button(
+        ">",
+        button_font,
+        (90, 90, 90),
+        (120, 120, 120),
+        (SCREEN_WIDTH // 2 + 140, SCREEN_HEIGHT // 2 - 40),
+        (60, 45),
+        WHITE
+    )
+    builder_color_prev = Button(
+        "<",
+        button_font,
+        (90, 90, 90),
+        (120, 120, 120),
+        (SCREEN_WIDTH // 2 - 300, SCREEN_HEIGHT // 2 + 10),
+        (60, 45),
+        WHITE
+    )
+    builder_color_next = Button(
+        ">",
+        button_font,
+        (90, 90, 90),
+        (120, 120, 120),
+        (SCREEN_WIDTH // 2 + 140, SCREEN_HEIGHT // 2 + 10),
+        (60, 45),
+        WHITE
+    )
+    builder_nozzle_prev = Button(
+        "<",
+        button_font,
+        (90, 90, 90),
+        (120, 120, 120),
+        (SCREEN_WIDTH // 2 - 300, SCREEN_HEIGHT // 2 + 60),
+        (60, 45),
+        WHITE
+    )
+    builder_nozzle_next = Button(
+        ">",
+        button_font,
+        (90, 90, 90),
+        (120, 120, 120),
+        (SCREEN_WIDTH // 2 + 140, SCREEN_HEIGHT // 2 + 60),
+        (60, 45),
+        WHITE
+    )
+
+    SAVE_FILE = "save.json"
+    hull_options = [
+        {"id": "arrow", "label": "Arrow", "cost": 0},
+        {"id": "diamond", "label": "Diamond", "cost": 12},
+        {"id": "delta", "label": "Delta", "cost": 18},
+    ]
+    color_options = [
+        {"id": "ember", "label": "Ember", "color": (255, 120, 120), "cost": 0},
+        {"id": "azure", "label": "Azure", "color": (120, 180, 255), "cost": 6},
+        {"id": "lilac", "label": "Lilac", "color": (190, 120, 255), "cost": 8},
+        {"id": "mint", "label": "Mint", "color": (120, 255, 200), "cost": 7},
+    ]
+    nozzle_options = [
+        {"id": "classic", "label": "Classic", "cost": 0},
+        {"id": "dual", "label": "Dual", "cost": 10},
+        {"id": "vector", "label": "Vector", "cost": 14},
+    ]
+
+    def get_option(options, option_id):
+        for option in options:
+            if option["id"] == option_id:
+                return option
+        return options[0]
+
+    def load_save():
+        if not os.path.exists(SAVE_FILE):
+            return {}
+        try:
+            with open(SAVE_FILE, "r") as file:
+                return json.load(file)
+        except (json.JSONDecodeError, OSError):
+            return {}
+
+    def save_game(data):
+        try:
+            with open(SAVE_FILE, "w") as file:
+                json.dump(data, file, indent=2)
+        except OSError:
+            pass
+
+    save_data = load_save()
+    player.credits = save_data.get("credits", 0)
+    player.wing_level = save_data.get("wing_level", 1)
+    player.weapon_level = save_data.get("weapon_level", 1)
+    player.weapon_mode = save_data.get("weapon_mode", "basic")
+    if player.weapon_mode not in {"basic", "spread"}:
+        player.weapon_mode = "basic"
+    player.hull_type = save_data.get("hull_type", "arrow")
+    player.nozzle_type = save_data.get("nozzle_type", "classic")
+    player.custom_color = save_data.get("custom_color", False)
+    saved_color = save_data.get("ship_color")
+    if isinstance(saved_color, list) and len(saved_color) == 3:
+        player.color = tuple(saved_color)
+        player.custom_color = True
+    owned_hulls = set(save_data.get("owned_hulls", ["arrow"]))
+    owned_colors = set(save_data.get("owned_colors", ["ember"]))
+    owned_nozzles = set(save_data.get("owned_nozzles", ["classic"]))
+    owned_hulls.add(player.hull_type)
+    owned_nozzles.add(player.nozzle_type)
+
+    selected_hull = player.hull_type
+    selected_nozzle = player.nozzle_type
+    selected_color = next((c["id"] for c in color_options if c["color"] == player.color), "ember")
+    owned_colors.add(selected_color)
+
+    def persist_save():
+        save_game(
+            {
+                "credits": player.credits,
+                "wing_level": player.wing_level,
+                "weapon_level": player.weapon_level,
+                "weapon_mode": player.weapon_mode,
+                "hull_type": player.hull_type,
+                "nozzle_type": player.nozzle_type,
+                "ship_color": list(player.color),
+                "custom_color": player.custom_color,
+                "owned_hulls": sorted(owned_hulls),
+                "owned_colors": sorted(owned_colors),
+                "owned_nozzles": sorted(owned_nozzles),
+            }
+        )
+
     # Stars for background
     stars = []
     for _ in range(100):
@@ -137,6 +337,18 @@ def main():
         speed = random.uniform(1, 4)
         radius = random.randint(1, 3)
         stars.append([x, y, speed, radius])
+
+    def draw_background(surface):
+        surface.fill(current_bg_color)
+        # Stars
+        for star in stars:
+            pygame.draw.circle(surface, WHITE, (int(star[0]), int(star[1])), star[3])
+            star[1] += star[2]
+            if star[1] > SCREEN_HEIGHT:
+                star[0] = random.randint(0, SCREEN_WIDTH)
+                star[1] = 0
+                star[2] = random.uniform(1, 4)
+                star[3] = random.randint(1, 3)
 
     # Load top scores
     score_file = "scores.txt"
@@ -172,6 +384,11 @@ def main():
     score_added = False  # Initialize the flag to prevent multiple score additions
     countdown_start_ticks = None  # For countdown timer
     countdown_number = 3  # Start countdown from 3
+    story_events = {
+        2: ("Mission Control", "Scans are spiking. Expect denser fire from the swarm."),
+        4: ("Mission Control", "We traced the signal to an asteroid belt. Stay sharp."),
+        6: ("Mission Control", "Bosses are adapting. Watch for charge-up patterns."),
+    }
 
     # Function to spawn initial enemies
     def spawn_enemies(initial=False):
@@ -208,6 +425,29 @@ def main():
         boss_color_inner = (255, 0, 0)  # Red core
         boss = Boss(SCREEN_WIDTH // 2, 100, boss_color_outer, boss_color_inner, SCREEN_WIDTH, SCREEN_HEIGHT)
         boss_active = True
+        boss_dialogs = {
+            5: ("Warden-01", "You made it this far? Cute. Let's see you dodge this."),
+            10: ("Warden-02", "Your ship is fast. Mine is relentless."),
+            15: ("Warden-03", "Every pulse brings you closer to oblivion."),
+        }
+        dialog = boss_dialogs.get(level, ("Warden", "The abyss answers."))
+        dialog_queue.append(dialog)
+
+    def enqueue_intro_dialog():
+        dialog_queue.extend(
+            [
+                ("Mission Control", "Pilot, you're our last line of defense."),
+                ("Mission Control", "Break through the swarm and stop the Wardens."),
+            ]
+        )
+
+    def update_dialog(current_time):
+        if not dialog_bubble.is_active() and dialog_queue:
+            speaker, text = dialog_queue.pop(0)
+            dialog_bubble.start(speaker, text, current_time)
+        dialog_bubble.update(current_time)
+
+    builder_swatch_rects = []
 
     # Function to spawn an asteroid
     def spawn_asteroid():
@@ -283,7 +523,8 @@ def main():
                         current_bg_color = (10, 10, 10)  # Slightly off-black
                     player_color = get_opposite_color(current_bg_color)
                     player.reset()
-                    player.color = player_color
+                    if not player.custom_color:
+                        player.color = player_color
                     health_bar = HealthBar(player)
                     score_display = ScoreDisplay(SCREEN_WIDTH)
                     enemies.clear()
@@ -299,8 +540,12 @@ def main():
                     start_time = pygame.time.get_ticks()
                     elapsed_time = 0
                     score_added = False  # Reset the flag
+                    dialog_queue.clear()
+                    dialog_bubble.visible = False
                     # Spawn initial enemies
                     spawn_enemies(initial=True)
+                if ship_builder_button.is_clicked(event):
+                    game_state = "ship_builder"
                 if quit_button.is_clicked(event):
                     pygame.quit()
                     sys.exit()
@@ -314,6 +559,10 @@ def main():
                         if player.shoot():
                             if SHOOT_SOUND:
                                 SHOOT_SOUND.play()
+                    if event.key == pygame.K_z:
+                        player.set_weapon_mode("basic")
+                    if event.key == pygame.K_x:
+                        player.set_weapon_mode("spread")
                 # No need to handle movement here; it's handled in the main loop
 
             elif game_state == "game_over":
@@ -330,7 +579,8 @@ def main():
                         current_bg_color = (10, 10, 10)  # Slightly off-black
                     player_color = get_opposite_color(current_bg_color)
                     player.reset()
-                    player.color = player_color
+                    if not player.custom_color:
+                        player.color = player_color
                     health_bar = HealthBar(player)
                     score_display = ScoreDisplay(SCREEN_WIDTH)
                     enemies.clear()
@@ -346,11 +596,67 @@ def main():
                     start_time = pygame.time.get_ticks()
                     elapsed_time = 0
                     score_added = False  # Reset the flag
+                    dialog_queue.clear()
+                    dialog_bubble.visible = False
                     # Spawn initial enemies
                     spawn_enemies(initial=True)
                 if game_over_quit_button.is_clicked(event):
                     pygame.quit()
                     sys.exit()
+            elif game_state == "ship_builder":
+                if builder_back_button.is_clicked(event):
+                    persist_save()
+                    game_state = "menu"
+                if builder_weapon_button.is_clicked(event):
+                    if player.buy_weapon_upgrade():
+                        persist_save()
+                if builder_wing_button.is_clicked(event):
+                    if player.buy_wing_upgrade():
+                        persist_save()
+                if builder_hull_prev.is_clicked(event):
+                    current_index = [h["id"] for h in hull_options].index(selected_hull)
+                    selected_hull = hull_options[current_index - 1]["id"]
+                if builder_hull_next.is_clicked(event):
+                    current_index = [h["id"] for h in hull_options].index(selected_hull)
+                    selected_hull = hull_options[(current_index + 1) % len(hull_options)]["id"]
+                if builder_color_prev.is_clicked(event):
+                    current_index = [c["id"] for c in color_options].index(selected_color)
+                    selected_color = color_options[current_index - 1]["id"]
+                if builder_color_next.is_clicked(event):
+                    current_index = [c["id"] for c in color_options].index(selected_color)
+                    selected_color = color_options[(current_index + 1) % len(color_options)]["id"]
+                if builder_nozzle_prev.is_clicked(event):
+                    current_index = [n["id"] for n in nozzle_options].index(selected_nozzle)
+                    selected_nozzle = nozzle_options[current_index - 1]["id"]
+                if builder_nozzle_next.is_clicked(event):
+                    current_index = [n["id"] for n in nozzle_options].index(selected_nozzle)
+                    selected_nozzle = nozzle_options[(current_index + 1) % len(nozzle_options)]["id"]
+                if builder_confirm_button.is_clicked(event):
+                    pending_hull = get_option(hull_options, selected_hull)
+                    pending_color = get_option(color_options, selected_color)
+                    pending_nozzle = get_option(nozzle_options, selected_nozzle)
+                    total_cost = 0
+                    if selected_hull not in owned_hulls:
+                        total_cost += pending_hull["cost"]
+                    if selected_color not in owned_colors:
+                        total_cost += pending_color["cost"]
+                    if selected_nozzle not in owned_nozzles:
+                        total_cost += pending_nozzle["cost"]
+                    if player.can_afford(total_cost):
+                        player.credits -= total_cost
+                        owned_hulls.add(selected_hull)
+                        owned_colors.add(selected_color)
+                        owned_nozzles.add(selected_nozzle)
+                        player.hull_type = selected_hull
+                        player.nozzle_type = selected_nozzle
+                        player.color = pending_color["color"]
+                        player.custom_color = True
+                        persist_save()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    for rect, color_id in builder_swatch_rects:
+                        if rect.collidepoint(event.pos):
+                            selected_color = color_id
+                            break
 
         if game_state == "countdown":
             # Calculate countdown number based on time elapsed
@@ -370,20 +676,14 @@ def main():
                 else:
                     game_state = "playing"
                     start_time = pygame.time.get_ticks()  # Reset start time
+                    if not intro_dialog_shown:
+                        enqueue_intro_dialog()
+                        intro_dialog_shown = True
                     continue  # Skip to next iteration to prevent drawing countdown at -1
 
             # Draw countdown screen
             temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-            temp_surface.fill(current_bg_color)
-            # Draw stars
-            for star in stars:
-                pygame.draw.circle(temp_surface, WHITE, (int(star[0]), int(star[1])), star[3])
-                star[1] += star[2]
-                if star[1] > SCREEN_HEIGHT:
-                    star[0] = random.randint(0, SCREEN_WIDTH)
-                    star[1] = 0
-                    star[2] = random.uniform(1, 4)
-                    star[3] = random.randint(1, 3)
+            draw_background(temp_surface)
 
             # Determine what to display
             if countdown_number > 0:
@@ -432,6 +732,7 @@ def main():
             # Update timer
             current_ticks = pygame.time.get_ticks()
             elapsed_time = (current_ticks - start_time) / 1000  # Elapsed time in seconds
+            update_dialog(current_ticks)
 
             # Spawn asteroids
             if random.random() < 0.002:
@@ -458,7 +759,7 @@ def main():
 
             # Update enemies
             for enemy in enemies[:]:
-                enemy.update(player.x, player.y)
+                enemy.update(player.x, player.y, enemies)
                 # Update enemy bullets
                 for bullet in enemy.bullets[:]:
                     bullet.move()
@@ -481,7 +782,10 @@ def main():
 
             # Update boss if active
             if boss_active and boss:
-                boss.update(player.x, player.y)
+                boss_special = boss.update(player)
+                if boss_special:
+                    effects.start_shake(duration=20)
+                    effects.start_flash((int(boss.x), int(boss.y)), color=(255, 80, 180))
                 # Update boss bullets
                 for bullet in boss.bullets[:]:
                     bullet.move()
@@ -503,7 +807,6 @@ def main():
             for asteroid in asteroids[:]:
                 asteroid.move()
                 asteroid.rotate()
-                asteroid.draw(temp_surface)
                 if asteroid.y - asteroid.radius_outer > SCREEN_HEIGHT:
                     asteroids.remove(asteroid)
 
@@ -517,7 +820,6 @@ def main():
             # Update power-ups
             for power_up in power_ups[:]:
                 power_up.move()
-                power_up.draw(temp_surface)
                 if power_up.y - power_up.radius > SCREEN_HEIGHT:
                     power_ups.remove(power_up)
 
@@ -540,6 +842,7 @@ def main():
                         if EXPLOSION_SOUND:
                             EXPLOSION_SOUND.play()
                         score_display.add_score(1)
+                        player.add_credits(1)
                         enemies.remove(enemy)
                         # 5% chance to drop health item
                         if random.random() < 0.05:
@@ -558,8 +861,10 @@ def main():
                         if EXPLOSION_SOUND:
                             EXPLOSION_SOUND.play()
                         score_display.add_score(5)
+                        player.add_credits(5)
                         boss.health -= 1
                         if boss.health <= 0:
+                            player.add_credits(15)
                             boss_active = False
                             boss = None
                             boss_bullets.clear()
@@ -579,7 +884,7 @@ def main():
                     player.health -= bullet.damage
                     # Activate shake and flash effects
                     effects.start_shake()
-                    effects.start_flash()
+                    effects.start_flash((int(player.x), int(player.y)))
                     enemy_bullets.remove(bullet)
                     if player.health <= 0:
                         game_state = "game_over"
@@ -593,7 +898,7 @@ def main():
                     player.health -= bullet.damage
                     # Activate shake and flash effects
                     effects.start_shake()
-                    effects.start_flash()
+                    effects.start_flash((int(player.x), int(player.y)))
                     boss_bullets.remove(bullet)
                     if player.health <= 0:
                         game_state = "game_over"
@@ -607,7 +912,7 @@ def main():
                     player.health -= 2
                     # Activate shake and flash effects
                     effects.start_shake()
-                    effects.start_flash()
+                    effects.start_flash((int(player.x), int(player.y)))
                     asteroids.remove(asteroid)
                     if player.health <= 0:
                         game_state = "game_over"
@@ -625,16 +930,7 @@ def main():
 
             # Draw everything on a temporary surface
             temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-            temp_surface.fill(current_bg_color)
-            # Draw stars
-            for star in stars:
-                pygame.draw.circle(temp_surface, WHITE, (int(star[0]), int(star[1])), star[3])
-                star[1] += star[2]
-                if star[1] > SCREEN_HEIGHT:
-                    star[0] = random.randint(0, SCREEN_WIDTH)
-                    star[1] = 0
-                    star[2] = random.uniform(1, 4)
-                    star[3] = random.randint(1, 3)
+            draw_background(temp_surface)
 
             # Draw player
             player.draw(temp_surface)
@@ -676,6 +972,36 @@ def main():
             health_bar.draw(temp_surface)
             score_display.draw(temp_surface)
 
+            # Draw credits and weapon hints
+            credits_text = FONT.render(f"Credits: {player.credits}", True, WHITE)
+            temp_surface.blit(credits_text, (20, 110))
+            upgrade_font = pygame.font.Font(None, 24)
+            mode_label = f"Weapon: {player.weapon_mode.title()} [Z/X]"
+            mode_text = upgrade_font.render(mode_label, True, WHITE)
+            temp_surface.blit(mode_text, (20, 135))
+
+            # Weapon hotbar
+            hotbar_width = 120
+            hotbar_height = 44
+            hotbar_x = SCREEN_WIDTH - hotbar_width - 20
+            hotbar_y = SCREEN_HEIGHT - hotbar_height - 20
+            pygame.draw.rect(temp_surface, (30, 30, 30), (hotbar_x, hotbar_y, hotbar_width, hotbar_height), border_radius=10)
+            pygame.draw.rect(temp_surface, (200, 200, 200), (hotbar_x, hotbar_y, hotbar_width, hotbar_height), width=2, border_radius=10)
+            slot_width = (hotbar_width - 12) / 2
+            slot_height = hotbar_height - 12
+            slot_positions = [
+                (hotbar_x + 6, hotbar_y + 6, slot_width, slot_height, "Z", "basic"),
+                (hotbar_x + 6 + slot_width, hotbar_y + 6, slot_width, slot_height, "X", "spread"),
+            ]
+            for x, y, w, h, key_label, mode in slot_positions:
+                is_active = player.weapon_mode == mode
+                fill_color = (80, 180, 255) if is_active else (50, 50, 50)
+                pygame.draw.rect(temp_surface, fill_color, (x, y, w, h), border_radius=8)
+                pygame.draw.rect(temp_surface, (220, 220, 220), (x, y, w, h), width=2, border_radius=8)
+                label = upgrade_font.render(key_label, True, WHITE)
+                label_rect = label.get_rect(center=(x + w / 2, y + h / 2))
+                temp_surface.blit(label, label_rect)
+
             # Draw timer
             minutes = int(elapsed_time) // 60
             seconds = int(elapsed_time) % 60
@@ -706,18 +1032,24 @@ def main():
             # Blit the temporary surface onto the main screen
             SCREEN.blit(temp_surface, (0, 0))
 
+            # Draw dialog bubble on top
+            dialog_bubble.draw(SCREEN)
+
             # Check for level progression
             if not enemies and not boss_active and game_state == "playing":
                 level += 1
                 score_display.add_score(10)  # Bonus for completing level
                 score_display.update_level(level)  # Update the level display
                 boss_defeated_current_level = False  # Reset for the new level
+                if level in story_events:
+                    dialog_queue.append(story_events[level])
                 # Change background color
                 current_bg_color = get_random_dark_color()
                 if current_bg_color == (0, 0, 0):
                     current_bg_color = (10, 10, 10)  # Slightly off-black
                 # Update player and enemy colors
-                player.color = get_opposite_color(current_bg_color)
+                if not player.custom_color:
+                    player.color = get_opposite_color(current_bg_color)
                 # Play level-up sound
                 if LEVELUP_SOUND:
                     LEVELUP_SOUND.play()
@@ -734,16 +1066,7 @@ def main():
 
             # Draw menu on a temporary surface
             temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-            temp_surface.fill(current_bg_color)
-            # Draw stars
-            for star in stars:
-                pygame.draw.circle(temp_surface, WHITE, (int(star[0]), int(star[1])), star[3])
-                star[1] += star[2]
-                if star[1] > SCREEN_HEIGHT:
-                    star[0] = random.randint(0, SCREEN_WIDTH)
-                    star[1] = 0
-                    star[2] = random.uniform(1, 4)
-                    star[3] = random.randint(1, 3)
+            draw_background(temp_surface)
             # Draw title
             title_font = pygame.font.Font(None, 80)
             title_font.set_bold(True)
@@ -752,6 +1075,7 @@ def main():
             temp_surface.blit(title_text, title_rect)
             # Draw buttons
             play_button.draw(temp_surface)
+            ship_builder_button.draw(temp_surface)
             quit_button.draw(temp_surface)
 
             # Blit the temporary surface onto the main screen
@@ -762,6 +1086,7 @@ def main():
                 # Add the final score to top scores before displaying
                 top_scores = add_score(score_display.score, level, elapsed_time, top_scores)
                 score_added = True  # Set the flag to prevent multiple additions
+                persist_save()
             # Draw game over screen on a temporary surface
             temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             temp_surface.fill((0, 0, 0, 180))  # Semi-transparent black overlay
@@ -788,6 +1113,42 @@ def main():
             game_over_quit_button.draw(temp_surface)
 
             # Blit the temporary surface onto the main screen
+            SCREEN.blit(temp_surface, (0, 0))
+
+        elif game_state == "ship_builder":
+            temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            builder_swatch_rects = draw_ship_builder(
+                temp_surface,
+                SCREEN_WIDTH,
+                SCREEN_HEIGHT,
+                player,
+                selected_hull,
+                selected_color,
+                selected_nozzle,
+                owned_hulls,
+                owned_colors,
+                owned_nozzles,
+                hull_options,
+                color_options,
+                nozzle_options,
+                {
+                    "hull_prev": builder_hull_prev,
+                    "hull_next": builder_hull_next,
+                    "color_prev": builder_color_prev,
+                    "color_next": builder_color_next,
+                    "nozzle_prev": builder_nozzle_prev,
+                    "nozzle_next": builder_nozzle_next,
+                    "weapon": builder_weapon_button,
+                    "wing": builder_wing_button,
+                    "confirm": builder_confirm_button,
+                    "back": builder_back_button,
+                },
+                FONT,
+                pygame.font.Font(None, 30),
+                pygame.font.Font(None, 28),
+                pygame.font.Font(None, 26),
+                draw_background,
+            )
             SCREEN.blit(temp_surface, (0, 0))
 
         pygame.display.flip()
