@@ -458,7 +458,7 @@ def main():
 
             # Update enemies
             for enemy in enemies[:]:
-                enemy.update(player.x, player.y)
+                enemy.update(player.x, player.y, enemies)
                 # Update enemy bullets
                 for bullet in enemy.bullets[:]:
                     bullet.move()
@@ -579,7 +579,7 @@ def main():
                     player.health -= bullet.damage
                     # Activate shake and flash effects
                     effects.start_shake()
-                    effects.start_flash()
+                    effects.start_flash((int(player.x), int(player.y)))
                     enemy_bullets.remove(bullet)
                     if player.health <= 0:
                         game_state = "game_over"
@@ -593,7 +593,7 @@ def main():
                     player.health -= bullet.damage
                     # Activate shake and flash effects
                     effects.start_shake()
-                    effects.start_flash()
+                    effects.start_flash((int(player.x), int(player.y)))
                     boss_bullets.remove(bullet)
                     if player.health <= 0:
                         game_state = "game_over"
@@ -607,7 +607,7 @@ def main():
                     player.health -= 2
                     # Activate shake and flash effects
                     effects.start_shake()
-                    effects.start_flash()
+                    effects.start_flash((int(player.x), int(player.y)))
                     asteroids.remove(asteroid)
                     if player.health <= 0:
                         game_state = "game_over"
