@@ -5,6 +5,7 @@ import sys
 import os
 import random
 import math
+import json
 
 from utils import get_random_dark_color, get_opposite_color, is_collision, load_sound
 from entities.player import Player
@@ -179,6 +180,153 @@ def main():
         (240, 50),
         WHITE
     )
+
+    builder_confirm_button = Button(
+        "Confirm Loadout",
+        button_font,
+        (72, 61, 139),
+        (106, 90, 205),
+        (SCREEN_WIDTH // 2 - 160, SCREEN_HEIGHT // 2 + 140),
+        (320, 50),
+        WHITE
+    )
+
+    builder_hull_prev = Button(
+        "< Hull",
+        button_font,
+        (90, 90, 90),
+        (120, 120, 120),
+        (SCREEN_WIDTH // 2 - 300, SCREEN_HEIGHT // 2 - 40),
+        (160, 45),
+        WHITE
+    )
+    builder_hull_next = Button(
+        "Hull >",
+        button_font,
+        (90, 90, 90),
+        (120, 120, 120),
+        (SCREEN_WIDTH // 2 + 140, SCREEN_HEIGHT // 2 - 40),
+        (160, 45),
+        WHITE
+    )
+    builder_color_prev = Button(
+        "< Color",
+        button_font,
+        (90, 90, 90),
+        (120, 120, 120),
+        (SCREEN_WIDTH // 2 - 300, SCREEN_HEIGHT // 2 + 10),
+        (160, 45),
+        WHITE
+    )
+    builder_color_next = Button(
+        "Color >",
+        button_font,
+        (90, 90, 90),
+        (120, 120, 120),
+        (SCREEN_WIDTH // 2 + 140, SCREEN_HEIGHT // 2 + 10),
+        (160, 45),
+        WHITE
+    )
+    builder_nozzle_prev = Button(
+        "< Nozzle",
+        button_font,
+        (90, 90, 90),
+        (120, 120, 120),
+        (SCREEN_WIDTH // 2 - 300, SCREEN_HEIGHT // 2 + 60),
+        (160, 45),
+        WHITE
+    )
+    builder_nozzle_next = Button(
+        "Nozzle >",
+        button_font,
+        (90, 90, 90),
+        (120, 120, 120),
+        (SCREEN_WIDTH // 2 + 140, SCREEN_HEIGHT // 2 + 60),
+        (160, 45),
+        WHITE
+    )
+
+    SAVE_FILE = "save.json"
+    hull_options = [
+        {"id": "arrow", "label": "Arrow", "cost": 0},
+        {"id": "diamond", "label": "Diamond", "cost": 12},
+        {"id": "delta", "label": "Delta", "cost": 18},
+    ]
+    color_options = [
+        {"id": "ember", "label": "Ember", "color": (255, 120, 120), "cost": 0},
+        {"id": "azure", "label": "Azure", "color": (120, 180, 255), "cost": 6},
+        {"id": "lilac", "label": "Lilac", "color": (190, 120, 255), "cost": 8},
+        {"id": "mint", "label": "Mint", "color": (120, 255, 200), "cost": 7},
+    ]
+    nozzle_options = [
+        {"id": "classic", "label": "Classic", "cost": 0},
+        {"id": "dual", "label": "Dual", "cost": 10},
+        {"id": "vector", "label": "Vector", "cost": 14},
+    ]
+
+    def get_option(options, option_id):
+        for option in options:
+            if option["id"] == option_id:
+                return option
+        return options[0]
+
+    def load_save():
+        if not os.path.exists(SAVE_FILE):
+            return {}
+        try:
+            with open(SAVE_FILE, "r") as file:
+                return json.load(file)
+        except (json.JSONDecodeError, OSError):
+            return {}
+
+    def save_game(data):
+        try:
+            with open(SAVE_FILE, "w") as file:
+                json.dump(data, file, indent=2)
+        except OSError:
+            pass
+
+    save_data = load_save()
+    player.credits = save_data.get("credits", 0)
+    player.wing_level = save_data.get("wing_level", 1)
+    player.weapon_level = save_data.get("weapon_level", 1)
+    player.weapon_mode = save_data.get("weapon_mode", "basic")
+    if player.weapon_mode not in {"basic", "spread"}:
+        player.weapon_mode = "basic"
+    player.hull_type = save_data.get("hull_type", "arrow")
+    player.nozzle_type = save_data.get("nozzle_type", "classic")
+    player.custom_color = save_data.get("custom_color", False)
+    saved_color = save_data.get("ship_color")
+    if isinstance(saved_color, list) and len(saved_color) == 3:
+        player.color = tuple(saved_color)
+        player.custom_color = True
+    owned_hulls = set(save_data.get("owned_hulls", ["arrow"]))
+    owned_colors = set(save_data.get("owned_colors", ["ember"]))
+    owned_nozzles = set(save_data.get("owned_nozzles", ["classic"]))
+    owned_hulls.add(player.hull_type)
+    owned_nozzles.add(player.nozzle_type)
+
+    selected_hull = player.hull_type
+    selected_nozzle = player.nozzle_type
+    selected_color = next((c["id"] for c in color_options if c["color"] == player.color), "ember")
+    owned_colors.add(selected_color)
+
+    def persist_save():
+        save_game(
+            {
+                "credits": player.credits,
+                "wing_level": player.wing_level,
+                "weapon_level": player.weapon_level,
+                "weapon_mode": player.weapon_mode,
+                "hull_type": player.hull_type,
+                "nozzle_type": player.nozzle_type,
+                "ship_color": list(player.color),
+                "custom_color": player.custom_color,
+                "owned_hulls": sorted(owned_hulls),
+                "owned_colors": sorted(owned_colors),
+                "owned_nozzles": sorted(owned_nozzles),
+            }
+        )
 
     # Stars for background
     stars = []
@@ -372,7 +520,8 @@ def main():
                         current_bg_color = (10, 10, 10)  # Slightly off-black
                     player_color = get_opposite_color(current_bg_color)
                     player.reset()
-                    player.color = player_color
+                    if not player.custom_color:
+                        player.color = player_color
                     health_bar = HealthBar(player)
                     score_display = ScoreDisplay(SCREEN_WIDTH)
                     enemies.clear()
@@ -411,8 +560,6 @@ def main():
                         player.set_weapon_mode("basic")
                     if event.key == pygame.K_x:
                         player.set_weapon_mode("spread")
-                    if event.key == pygame.K_c:
-                        player.set_weapon_mode("burst")
                 # No need to handle movement here; it's handled in the main loop
 
             elif game_state == "game_over":
@@ -429,7 +576,8 @@ def main():
                         current_bg_color = (10, 10, 10)  # Slightly off-black
                     player_color = get_opposite_color(current_bg_color)
                     player.reset()
-                    player.color = player_color
+                    if not player.custom_color:
+                        player.color = player_color
                     health_bar = HealthBar(player)
                     score_display = ScoreDisplay(SCREEN_WIDTH)
                     enemies.clear()
@@ -454,11 +602,53 @@ def main():
                     sys.exit()
             elif game_state == "ship_builder":
                 if builder_back_button.is_clicked(event):
+                    persist_save()
                     game_state = "menu"
                 if builder_weapon_button.is_clicked(event):
-                    player.buy_weapon_upgrade()
+                    if player.buy_weapon_upgrade():
+                        persist_save()
                 if builder_wing_button.is_clicked(event):
-                    player.buy_wing_upgrade()
+                    if player.buy_wing_upgrade():
+                        persist_save()
+                if builder_hull_prev.is_clicked(event):
+                    current_index = [h["id"] for h in hull_options].index(selected_hull)
+                    selected_hull = hull_options[current_index - 1]["id"]
+                if builder_hull_next.is_clicked(event):
+                    current_index = [h["id"] for h in hull_options].index(selected_hull)
+                    selected_hull = hull_options[(current_index + 1) % len(hull_options)]["id"]
+                if builder_color_prev.is_clicked(event):
+                    current_index = [c["id"] for c in color_options].index(selected_color)
+                    selected_color = color_options[current_index - 1]["id"]
+                if builder_color_next.is_clicked(event):
+                    current_index = [c["id"] for c in color_options].index(selected_color)
+                    selected_color = color_options[(current_index + 1) % len(color_options)]["id"]
+                if builder_nozzle_prev.is_clicked(event):
+                    current_index = [n["id"] for n in nozzle_options].index(selected_nozzle)
+                    selected_nozzle = nozzle_options[current_index - 1]["id"]
+                if builder_nozzle_next.is_clicked(event):
+                    current_index = [n["id"] for n in nozzle_options].index(selected_nozzle)
+                    selected_nozzle = nozzle_options[(current_index + 1) % len(nozzle_options)]["id"]
+                if builder_confirm_button.is_clicked(event):
+                    pending_hull = get_option(hull_options, selected_hull)
+                    pending_color = get_option(color_options, selected_color)
+                    pending_nozzle = get_option(nozzle_options, selected_nozzle)
+                    total_cost = 0
+                    if selected_hull not in owned_hulls:
+                        total_cost += pending_hull["cost"]
+                    if selected_color not in owned_colors:
+                        total_cost += pending_color["cost"]
+                    if selected_nozzle not in owned_nozzles:
+                        total_cost += pending_nozzle["cost"]
+                    if player.can_afford(total_cost):
+                        player.credits -= total_cost
+                        owned_hulls.add(selected_hull)
+                        owned_colors.add(selected_color)
+                        owned_nozzles.add(selected_nozzle)
+                        player.hull_type = selected_hull
+                        player.nozzle_type = selected_nozzle
+                        player.color = pending_color["color"]
+                        player.custom_color = True
+                        persist_save()
 
         if game_state == "countdown":
             # Calculate countdown number based on time elapsed
@@ -780,9 +970,31 @@ def main():
             credits_text = FONT.render(f"Credits: {player.credits}", True, WHITE)
             temp_surface.blit(credits_text, (20, 110))
             upgrade_font = pygame.font.Font(None, 24)
-            mode_label = f"Weapon: {player.weapon_mode.title()} [Z/X/C]"
+            mode_label = f"Weapon: {player.weapon_mode.title()} [Z/X]"
             mode_text = upgrade_font.render(mode_label, True, WHITE)
             temp_surface.blit(mode_text, (20, 135))
+
+            # Weapon hotbar
+            hotbar_width = 120
+            hotbar_height = 44
+            hotbar_x = SCREEN_WIDTH - hotbar_width - 20
+            hotbar_y = SCREEN_HEIGHT - hotbar_height - 20
+            pygame.draw.rect(temp_surface, (30, 30, 30), (hotbar_x, hotbar_y, hotbar_width, hotbar_height), border_radius=10)
+            pygame.draw.rect(temp_surface, (200, 200, 200), (hotbar_x, hotbar_y, hotbar_width, hotbar_height), width=2, border_radius=10)
+            slot_width = (hotbar_width - 12) / 2
+            slot_height = hotbar_height - 12
+            slot_positions = [
+                (hotbar_x + 6, hotbar_y + 6, slot_width, slot_height, "Z", "basic"),
+                (hotbar_x + 6 + slot_width, hotbar_y + 6, slot_width, slot_height, "X", "spread"),
+            ]
+            for x, y, w, h, key_label, mode in slot_positions:
+                is_active = player.weapon_mode == mode
+                fill_color = (80, 180, 255) if is_active else (50, 50, 50)
+                pygame.draw.rect(temp_surface, fill_color, (x, y, w, h), border_radius=8)
+                pygame.draw.rect(temp_surface, (220, 220, 220), (x, y, w, h), width=2, border_radius=8)
+                label = upgrade_font.render(key_label, True, WHITE)
+                label_rect = label.get_rect(center=(x + w / 2, y + h / 2))
+                temp_surface.blit(label, label_rect)
 
             # Draw timer
             minutes = int(elapsed_time) // 60
@@ -830,7 +1042,8 @@ def main():
                 if current_bg_color == (0, 0, 0):
                     current_bg_color = (10, 10, 10)  # Slightly off-black
                 # Update player and enemy colors
-                player.color = get_opposite_color(current_bg_color)
+                if not player.custom_color:
+                    player.color = get_opposite_color(current_bg_color)
                 # Play level-up sound
                 if LEVELUP_SOUND:
                     LEVELUP_SOUND.play()
@@ -867,6 +1080,7 @@ def main():
                 # Add the final score to top scores before displaying
                 top_scores = add_score(score_display.score, level, elapsed_time, top_scores)
                 score_added = True  # Set the flag to prevent multiple additions
+                persist_save()
             # Draw game over screen on a temporary surface
             temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             temp_surface.fill((0, 0, 0, 180))  # Semi-transparent black overlay
@@ -927,15 +1141,58 @@ def main():
 
             tips_font = pygame.font.Font(None, 28)
             tips = [
-                "Weapon modes: Z (Basic), X (Spread), C (Burst)",
-                "Upgrades apply to your ship and weapons.",
+                "Weapon modes: Z (Basic), X (Spread)",
+                "Select parts, then confirm to buy/apply.",
             ]
             for idx, tip in enumerate(tips):
                 tip_text = tips_font.render(tip, True, WHITE)
                 temp_surface.blit(tip_text, (SCREEN_WIDTH // 2 - 220, SCREEN_HEIGHT // 2 + 110 + idx * 28))
 
+            preview_player = Player(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 110, player.color, SCREEN_WIDTH, SCREEN_HEIGHT)
+            preview_player.wing_level = player.wing_level
+            preview_player.weapon_level = player.weapon_level
+            preview_player.hull_type = selected_hull
+            preview_player.nozzle_type = selected_nozzle
+            preview_player.color = get_option(color_options, selected_color)["color"]
+            preview_player.draw(temp_surface)
+
+            selection_font = pygame.font.Font(None, 30)
+            hull_option = get_option(hull_options, selected_hull)
+            color_option = get_option(color_options, selected_color)
+            nozzle_option = get_option(nozzle_options, selected_nozzle)
+            hull_owned = selected_hull in owned_hulls
+            color_owned = selected_color in owned_colors
+            nozzle_owned = selected_nozzle in owned_nozzles
+            hull_status = "Owned" if hull_owned else f"{hull_option['cost']}c"
+            color_status = "Owned" if color_owned else f"{color_option['cost']}c"
+            nozzle_status = "Owned" if nozzle_owned else f"{nozzle_option['cost']}c"
+            hull_text = selection_font.render(f"Hull: {hull_option['label']} ({hull_status})", True, WHITE)
+            color_text = selection_font.render(f"Color: {color_option['label']} ({color_status})", True, WHITE)
+            nozzle_text = selection_font.render(f"Nozzle: {nozzle_option['label']} ({nozzle_status})", True, WHITE)
+            temp_surface.blit(hull_text, (SCREEN_WIDTH // 2 - 140, SCREEN_HEIGHT // 2 - 90))
+            temp_surface.blit(color_text, (SCREEN_WIDTH // 2 - 140, SCREEN_HEIGHT // 2 - 60))
+            temp_surface.blit(nozzle_text, (SCREEN_WIDTH // 2 - 140, SCREEN_HEIGHT // 2 - 30))
+
+            pending_cost = 0
+            if not hull_owned:
+                pending_cost += hull_option["cost"]
+            if not color_owned:
+                pending_cost += color_option["cost"]
+            if not nozzle_owned:
+                pending_cost += nozzle_option["cost"]
+            confirm_label = f"Confirm ({pending_cost}c)" if pending_cost else "Confirm (Owned)"
+            confirm_text = selection_font.render(confirm_label, True, WHITE)
+            temp_surface.blit(confirm_text, (SCREEN_WIDTH // 2 - 120, SCREEN_HEIGHT // 2 + 190))
+
+            builder_hull_prev.draw(temp_surface)
+            builder_hull_next.draw(temp_surface)
+            builder_color_prev.draw(temp_surface)
+            builder_color_next.draw(temp_surface)
+            builder_nozzle_prev.draw(temp_surface)
+            builder_nozzle_next.draw(temp_surface)
             builder_weapon_button.draw(temp_surface)
             builder_wing_button.draw(temp_surface)
+            builder_confirm_button.draw(temp_surface)
             builder_back_button.draw(temp_surface)
 
             SCREEN.blit(temp_surface, (0, 0))
