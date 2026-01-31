@@ -15,7 +15,7 @@ from entities.asteroid import Asteroid
 from entities.health_item import HealthItem
 from entities.power_up import PowerUp
 from effects.effects import Effects
-from ui.ui import Button, HealthBar, ScoreDisplay
+from ui.ui import Button, HealthBar, ScoreDisplay, DialogBubble
 
 # Initialize Pygame
 pygame.init()
@@ -85,6 +85,17 @@ def main():
     # Effects
     effects = Effects(SCREEN_WIDTH, SCREEN_HEIGHT)
 
+    # Dialogue bubble
+    dialog_font = pygame.font.Font(None, 28)
+    dialog_width = max(360, int(SCREEN_WIDTH * 0.33))
+    dialog_bubble = DialogBubble(
+        dialog_font,
+        (30, SCREEN_HEIGHT - 170),
+        (dialog_width, 130),
+    )
+    dialog_queue = []
+    intro_dialog_shown = False
+
     # Buttons
     button_font = pygame.font.Font(None, 52)
     button_font.set_bold(True)
@@ -138,6 +149,44 @@ def main():
         radius = random.randint(1, 3)
         stars.append([x, y, speed, radius])
 
+    # Nebula wisps for dynamic background
+    nebulae = []
+    for _ in range(6):
+        x = random.randint(0, SCREEN_WIDTH)
+        y = random.randint(0, SCREEN_HEIGHT)
+        radius = random.randint(120, 260)
+        speed = random.uniform(0.2, 0.6)
+        color = (
+            random.randint(30, 80),
+            random.randint(30, 80),
+            random.randint(60, 140),
+            random.randint(40, 70),
+        )
+        nebulae.append([x, y, radius, speed, color])
+
+    def draw_background(surface):
+        surface.fill(current_bg_color)
+        # Nebula wisps
+        for nebula in nebulae:
+            nx, ny, nr, ns, ncolor = nebula
+            nebula_surface = pygame.Surface((nr * 2, nr * 2), pygame.SRCALPHA)
+            pygame.draw.circle(nebula_surface, ncolor, (nr, nr), nr)
+            surface.blit(nebula_surface, (nx - nr, ny - nr))
+            nebula[1] += ns
+            if nebula[1] - nr > SCREEN_HEIGHT:
+                nebula[1] = -nr
+                nebula[0] = random.randint(0, SCREEN_WIDTH)
+
+        # Stars
+        for star in stars:
+            pygame.draw.circle(surface, WHITE, (int(star[0]), int(star[1])), star[3])
+            star[1] += star[2]
+            if star[1] > SCREEN_HEIGHT:
+                star[0] = random.randint(0, SCREEN_WIDTH)
+                star[1] = 0
+                star[2] = random.uniform(1, 4)
+                star[3] = random.randint(1, 3)
+
     # Load top scores
     score_file = "scores.txt"
     top_scores = []
@@ -172,6 +221,11 @@ def main():
     score_added = False  # Initialize the flag to prevent multiple score additions
     countdown_start_ticks = None  # For countdown timer
     countdown_number = 3  # Start countdown from 3
+    story_events = {
+        2: ("Mission Control", "Scans are spiking. Expect denser fire from the swarm."),
+        4: ("Mission Control", "We traced the signal to an asteroid belt. Stay sharp."),
+        6: ("Mission Control", "Bosses are adapting. Watch for charge-up patterns."),
+    }
 
     # Function to spawn initial enemies
     def spawn_enemies(initial=False):
@@ -208,6 +262,27 @@ def main():
         boss_color_inner = (255, 0, 0)  # Red core
         boss = Boss(SCREEN_WIDTH // 2, 100, boss_color_outer, boss_color_inner, SCREEN_WIDTH, SCREEN_HEIGHT)
         boss_active = True
+        boss_dialogs = {
+            5: ("Warden-01", "You made it this far? Cute. Let's see you dodge this."),
+            10: ("Warden-02", "Your ship is fast. Mine is relentless."),
+            15: ("Warden-03", "Every pulse brings you closer to oblivion."),
+        }
+        dialog = boss_dialogs.get(level, ("Warden", "The abyss answers."))
+        dialog_queue.append(dialog)
+
+    def enqueue_intro_dialog():
+        dialog_queue.extend(
+            [
+                ("Mission Control", "Pilot, you're our last line of defense."),
+                ("Mission Control", "Break through the swarm and stop the Wardens."),
+            ]
+        )
+
+    def update_dialog(current_time):
+        if not dialog_bubble.is_active() and dialog_queue:
+            speaker, text = dialog_queue.pop(0)
+            dialog_bubble.start(speaker, text, current_time)
+        dialog_bubble.update(current_time)
 
     # Function to spawn an asteroid
     def spawn_asteroid():
@@ -299,6 +374,8 @@ def main():
                     start_time = pygame.time.get_ticks()
                     elapsed_time = 0
                     score_added = False  # Reset the flag
+                    dialog_queue.clear()
+                    dialog_bubble.visible = False
                     # Spawn initial enemies
                     spawn_enemies(initial=True)
                 if quit_button.is_clicked(event):
@@ -346,6 +423,8 @@ def main():
                     start_time = pygame.time.get_ticks()
                     elapsed_time = 0
                     score_added = False  # Reset the flag
+                    dialog_queue.clear()
+                    dialog_bubble.visible = False
                     # Spawn initial enemies
                     spawn_enemies(initial=True)
                 if game_over_quit_button.is_clicked(event):
@@ -370,20 +449,14 @@ def main():
                 else:
                     game_state = "playing"
                     start_time = pygame.time.get_ticks()  # Reset start time
+                    if not intro_dialog_shown:
+                        enqueue_intro_dialog()
+                        intro_dialog_shown = True
                     continue  # Skip to next iteration to prevent drawing countdown at -1
 
             # Draw countdown screen
             temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-            temp_surface.fill(current_bg_color)
-            # Draw stars
-            for star in stars:
-                pygame.draw.circle(temp_surface, WHITE, (int(star[0]), int(star[1])), star[3])
-                star[1] += star[2]
-                if star[1] > SCREEN_HEIGHT:
-                    star[0] = random.randint(0, SCREEN_WIDTH)
-                    star[1] = 0
-                    star[2] = random.uniform(1, 4)
-                    star[3] = random.randint(1, 3)
+            draw_background(temp_surface)
 
             # Determine what to display
             if countdown_number > 0:
@@ -432,6 +505,7 @@ def main():
             # Update timer
             current_ticks = pygame.time.get_ticks()
             elapsed_time = (current_ticks - start_time) / 1000  # Elapsed time in seconds
+            update_dialog(current_ticks)
 
             # Spawn asteroids
             if random.random() < 0.002:
@@ -458,7 +532,7 @@ def main():
 
             # Update enemies
             for enemy in enemies[:]:
-                enemy.update(player.x, player.y)
+                enemy.update(player.x, player.y, enemies)
                 # Update enemy bullets
                 for bullet in enemy.bullets[:]:
                     bullet.move()
@@ -481,7 +555,10 @@ def main():
 
             # Update boss if active
             if boss_active and boss:
-                boss.update(player.x, player.y)
+                boss_special = boss.update(player)
+                if boss_special:
+                    effects.start_shake(duration=20)
+                    effects.start_flash((int(boss.x), int(boss.y)), color=(255, 80, 180))
                 # Update boss bullets
                 for bullet in boss.bullets[:]:
                     bullet.move()
@@ -579,7 +656,7 @@ def main():
                     player.health -= bullet.damage
                     # Activate shake and flash effects
                     effects.start_shake()
-                    effects.start_flash()
+                    effects.start_flash((int(player.x), int(player.y)))
                     enemy_bullets.remove(bullet)
                     if player.health <= 0:
                         game_state = "game_over"
@@ -593,7 +670,7 @@ def main():
                     player.health -= bullet.damage
                     # Activate shake and flash effects
                     effects.start_shake()
-                    effects.start_flash()
+                    effects.start_flash((int(player.x), int(player.y)))
                     boss_bullets.remove(bullet)
                     if player.health <= 0:
                         game_state = "game_over"
@@ -607,7 +684,7 @@ def main():
                     player.health -= 2
                     # Activate shake and flash effects
                     effects.start_shake()
-                    effects.start_flash()
+                    effects.start_flash((int(player.x), int(player.y)))
                     asteroids.remove(asteroid)
                     if player.health <= 0:
                         game_state = "game_over"
@@ -625,16 +702,7 @@ def main():
 
             # Draw everything on a temporary surface
             temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-            temp_surface.fill(current_bg_color)
-            # Draw stars
-            for star in stars:
-                pygame.draw.circle(temp_surface, WHITE, (int(star[0]), int(star[1])), star[3])
-                star[1] += star[2]
-                if star[1] > SCREEN_HEIGHT:
-                    star[0] = random.randint(0, SCREEN_WIDTH)
-                    star[1] = 0
-                    star[2] = random.uniform(1, 4)
-                    star[3] = random.randint(1, 3)
+            draw_background(temp_surface)
 
             # Draw player
             player.draw(temp_surface)
@@ -706,12 +774,17 @@ def main():
             # Blit the temporary surface onto the main screen
             SCREEN.blit(temp_surface, (0, 0))
 
+            # Draw dialog bubble on top
+            dialog_bubble.draw(SCREEN)
+
             # Check for level progression
             if not enemies and not boss_active and game_state == "playing":
                 level += 1
                 score_display.add_score(10)  # Bonus for completing level
                 score_display.update_level(level)  # Update the level display
                 boss_defeated_current_level = False  # Reset for the new level
+                if level in story_events:
+                    dialog_queue.append(story_events[level])
                 # Change background color
                 current_bg_color = get_random_dark_color()
                 if current_bg_color == (0, 0, 0):
@@ -734,16 +807,7 @@ def main():
 
             # Draw menu on a temporary surface
             temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-            temp_surface.fill(current_bg_color)
-            # Draw stars
-            for star in stars:
-                pygame.draw.circle(temp_surface, WHITE, (int(star[0]), int(star[1])), star[3])
-                star[1] += star[2]
-                if star[1] > SCREEN_HEIGHT:
-                    star[0] = random.randint(0, SCREEN_WIDTH)
-                    star[1] = 0
-                    star[2] = random.uniform(1, 4)
-                    star[3] = random.randint(1, 3)
+            draw_background(temp_surface)
             # Draw title
             title_font = pygame.font.Font(None, 80)
             title_font.set_bold(True)
