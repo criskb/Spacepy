@@ -75,7 +75,7 @@ class ScoreDisplay:
         surface.blit(level_text, (20, 80))
 
 class DialogBubble:
-    def __init__(self, font, position, size, text_color=(255, 255, 255)):
+    def __init__(self, font, position, size, text_color=(30, 30, 30)):
         self.font = font
         self.position = position
         self.size = size
@@ -145,8 +145,8 @@ class DialogBubble:
         if not self.visible:
             return
         rect = pygame.Rect(self.position, self.size)
-        bubble_color = (25, 25, 35)
-        border_color = lighten_color(bubble_color, 0.3)
+        bubble_color = (245, 245, 245)
+        border_color = darken_color(bubble_color, 0.2)
         pygame.draw.rect(surface, bubble_color, rect, border_radius=16)
         pygame.draw.rect(surface, border_color, rect, width=2, border_radius=16)
         tail = [
@@ -159,7 +159,7 @@ class DialogBubble:
 
         speaker_font = pygame.font.Font(None, 26)
         speaker_font.set_bold(True)
-        speaker_surface = speaker_font.render(self.speaker, True, lighten_color(self.text_color, 0.2))
+        speaker_surface = speaker_font.render(self.speaker, True, darken_color(self.text_color, 0.2))
         surface.blit(speaker_surface, (rect.x + self.padding, rect.y + self.padding))
 
         text_area_width = rect.width - self.padding * 2

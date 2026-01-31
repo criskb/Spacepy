@@ -87,10 +87,11 @@ def main():
 
     # Dialogue bubble
     dialog_font = pygame.font.Font(None, 28)
+    dialog_width = max(360, int(SCREEN_WIDTH * 0.33))
     dialog_bubble = DialogBubble(
         dialog_font,
-        (40, SCREEN_HEIGHT - 190),
-        (SCREEN_WIDTH - 80, 140),
+        (30, SCREEN_HEIGHT - 170),
+        (dialog_width, 130),
     )
     dialog_queue = []
     intro_dialog_shown = False
@@ -147,6 +148,44 @@ def main():
         speed = random.uniform(1, 4)
         radius = random.randint(1, 3)
         stars.append([x, y, speed, radius])
+
+    # Nebula wisps for dynamic background
+    nebulae = []
+    for _ in range(6):
+        x = random.randint(0, SCREEN_WIDTH)
+        y = random.randint(0, SCREEN_HEIGHT)
+        radius = random.randint(120, 260)
+        speed = random.uniform(0.2, 0.6)
+        color = (
+            random.randint(30, 80),
+            random.randint(30, 80),
+            random.randint(60, 140),
+            random.randint(40, 70),
+        )
+        nebulae.append([x, y, radius, speed, color])
+
+    def draw_background(surface):
+        surface.fill(current_bg_color)
+        # Nebula wisps
+        for nebula in nebulae:
+            nx, ny, nr, ns, ncolor = nebula
+            nebula_surface = pygame.Surface((nr * 2, nr * 2), pygame.SRCALPHA)
+            pygame.draw.circle(nebula_surface, ncolor, (nr, nr), nr)
+            surface.blit(nebula_surface, (nx - nr, ny - nr))
+            nebula[1] += ns
+            if nebula[1] - nr > SCREEN_HEIGHT:
+                nebula[1] = -nr
+                nebula[0] = random.randint(0, SCREEN_WIDTH)
+
+        # Stars
+        for star in stars:
+            pygame.draw.circle(surface, WHITE, (int(star[0]), int(star[1])), star[3])
+            star[1] += star[2]
+            if star[1] > SCREEN_HEIGHT:
+                star[0] = random.randint(0, SCREEN_WIDTH)
+                star[1] = 0
+                star[2] = random.uniform(1, 4)
+                star[3] = random.randint(1, 3)
 
     # Load top scores
     score_file = "scores.txt"
@@ -417,16 +456,7 @@ def main():
 
             # Draw countdown screen
             temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-            temp_surface.fill(current_bg_color)
-            # Draw stars
-            for star in stars:
-                pygame.draw.circle(temp_surface, WHITE, (int(star[0]), int(star[1])), star[3])
-                star[1] += star[2]
-                if star[1] > SCREEN_HEIGHT:
-                    star[0] = random.randint(0, SCREEN_WIDTH)
-                    star[1] = 0
-                    star[2] = random.uniform(1, 4)
-                    star[3] = random.randint(1, 3)
+            draw_background(temp_surface)
 
             # Determine what to display
             if countdown_number > 0:
@@ -672,16 +702,7 @@ def main():
 
             # Draw everything on a temporary surface
             temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-            temp_surface.fill(current_bg_color)
-            # Draw stars
-            for star in stars:
-                pygame.draw.circle(temp_surface, WHITE, (int(star[0]), int(star[1])), star[3])
-                star[1] += star[2]
-                if star[1] > SCREEN_HEIGHT:
-                    star[0] = random.randint(0, SCREEN_WIDTH)
-                    star[1] = 0
-                    star[2] = random.uniform(1, 4)
-                    star[3] = random.randint(1, 3)
+            draw_background(temp_surface)
 
             # Draw player
             player.draw(temp_surface)
@@ -786,16 +807,7 @@ def main():
 
             # Draw menu on a temporary surface
             temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-            temp_surface.fill(current_bg_color)
-            # Draw stars
-            for star in stars:
-                pygame.draw.circle(temp_surface, WHITE, (int(star[0]), int(star[1])), star[3])
-                star[1] += star[2]
-                if star[1] > SCREEN_HEIGHT:
-                    star[0] = random.randint(0, SCREEN_WIDTH)
-                    star[1] = 0
-                    star[2] = random.uniform(1, 4)
-                    star[3] = random.randint(1, 3)
+            draw_background(temp_surface)
             # Draw title
             title_font = pygame.font.Font(None, 80)
             title_font.set_bold(True)
