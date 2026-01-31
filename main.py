@@ -167,7 +167,7 @@ def main():
         (46, 139, 87),
         (60, 179, 113),
         (SCREEN_WIDTH // 2 - 220, SCREEN_HEIGHT // 2 + 40),
-        (240, 50),
+        (320, 50),
         WHITE
     )
 
@@ -177,7 +177,7 @@ def main():
         (46, 139, 87),
         (60, 179, 113),
         (SCREEN_WIDTH // 2 + 20, SCREEN_HEIGHT // 2 + 40),
-        (240, 50),
+        (320, 50),
         WHITE
     )
 
@@ -192,57 +192,57 @@ def main():
     )
 
     builder_hull_prev = Button(
-        "< Hull",
+        "<",
         button_font,
         (90, 90, 90),
         (120, 120, 120),
         (SCREEN_WIDTH // 2 - 300, SCREEN_HEIGHT // 2 - 40),
-        (160, 45),
+        (60, 45),
         WHITE
     )
     builder_hull_next = Button(
-        "Hull >",
+        ">",
         button_font,
         (90, 90, 90),
         (120, 120, 120),
         (SCREEN_WIDTH // 2 + 140, SCREEN_HEIGHT // 2 - 40),
-        (160, 45),
+        (60, 45),
         WHITE
     )
     builder_color_prev = Button(
-        "< Color",
+        "<",
         button_font,
         (90, 90, 90),
         (120, 120, 120),
         (SCREEN_WIDTH // 2 - 300, SCREEN_HEIGHT // 2 + 10),
-        (160, 45),
+        (60, 45),
         WHITE
     )
     builder_color_next = Button(
-        "Color >",
+        ">",
         button_font,
         (90, 90, 90),
         (120, 120, 120),
         (SCREEN_WIDTH // 2 + 140, SCREEN_HEIGHT // 2 + 10),
-        (160, 45),
+        (60, 45),
         WHITE
     )
     builder_nozzle_prev = Button(
-        "< Nozzle",
+        "<",
         button_font,
         (90, 90, 90),
         (120, 120, 120),
         (SCREEN_WIDTH // 2 - 300, SCREEN_HEIGHT // 2 + 60),
-        (160, 45),
+        (60, 45),
         WHITE
     )
     builder_nozzle_next = Button(
-        "Nozzle >",
+        ">",
         button_font,
         (90, 90, 90),
         (120, 120, 120),
         (SCREEN_WIDTH // 2 + 140, SCREEN_HEIGHT // 2 + 60),
-        (160, 45),
+        (60, 45),
         WHITE
     )
 
@@ -447,12 +447,12 @@ def main():
         dialog_bubble.update(current_time)
 
     def layout_ship_builder():
-        left_panel = pygame.Rect(40, 140, 360, SCREEN_HEIGHT - 220)
-        right_panel = pygame.Rect(SCREEN_WIDTH - 400, 140, 360, SCREEN_HEIGHT - 220)
-        center_panel = pygame.Rect(420, 140, SCREEN_WIDTH - 840, SCREEN_HEIGHT - 220)
+        left_panel = pygame.Rect(30, 130, 420, SCREEN_HEIGHT - 200)
+        center_panel = pygame.Rect(470, 130, 500, SCREEN_HEIGHT - 200)
+        right_panel = pygame.Rect(SCREEN_WIDTH - 370, 130, 340, SCREEN_HEIGHT - 200)
 
+        button_y = right_panel.y + 100
         button_x = right_panel.x + 20
-        button_y = right_panel.y + 70
         for button in [
             builder_hull_prev,
             builder_hull_next,
@@ -463,18 +463,18 @@ def main():
         ]:
             button.position = (button_x, button_y)
             button.rect.topleft = button.position
-            button_y += 58
+            button_y += 70
 
-        builder_weapon_button.position = (left_panel.x + 20, left_panel.y + 420)
+        builder_weapon_button.position = (left_panel.x + 20, left_panel.y + 510)
         builder_weapon_button.rect.topleft = builder_weapon_button.position
 
-        builder_wing_button.position = (left_panel.x + 20, left_panel.y + 490)
+        builder_wing_button.position = (left_panel.x + 20, left_panel.y + 570)
         builder_wing_button.rect.topleft = builder_wing_button.position
 
-        builder_confirm_button.position = (center_panel.x + 30, center_panel.y + 420)
+        builder_confirm_button.position = (center_panel.x + 90, center_panel.y + 520)
         builder_confirm_button.rect.topleft = builder_confirm_button.position
 
-        builder_back_button.position = (SCREEN_WIDTH - 240, SCREEN_HEIGHT - 100)
+        builder_back_button.position = (SCREEN_WIDTH - 260, SCREEN_HEIGHT - 90)
         builder_back_button.rect.topleft = builder_back_button.position
 
     # Function to spawn an asteroid
@@ -1157,15 +1157,15 @@ def main():
             panel_color = (20, 20, 30)
             panel_border = (120, 120, 140)
 
-            left_panel = pygame.Rect(40, 140, 360, SCREEN_HEIGHT - 220)
-            right_panel = pygame.Rect(SCREEN_WIDTH - 400, 140, 360, SCREEN_HEIGHT - 220)
-            center_panel = pygame.Rect(420, 140, SCREEN_WIDTH - 840, SCREEN_HEIGHT - 220)
+            left_panel = pygame.Rect(30, 130, 420, SCREEN_HEIGHT - 200)
+            center_panel = pygame.Rect(470, 130, 500, SCREEN_HEIGHT - 200)
+            right_panel = pygame.Rect(SCREEN_WIDTH - 370, 130, 340, SCREEN_HEIGHT - 200)
             for panel in [left_panel, center_panel, right_panel]:
                 pygame.draw.rect(temp_surface, panel_color, panel, border_radius=16)
                 pygame.draw.rect(temp_surface, panel_border, panel, width=2, border_radius=16)
 
             preview_x = center_panel.centerx
-            preview_y = center_panel.y + 160
+            preview_y = center_panel.y + 170
             preview_player = Player(preview_x, preview_y, player.color, SCREEN_WIDTH, SCREEN_HEIGHT)
             preview_player.wing_level = player.wing_level
             preview_player.weapon_level = player.weapon_level
@@ -1184,12 +1184,27 @@ def main():
             hull_status = "Owned" if hull_owned else f"{hull_option['cost']}c"
             color_status = "Owned" if color_owned else f"{color_option['cost']}c"
             nozzle_status = "Owned" if nozzle_owned else f"{nozzle_option['cost']}c"
-            hull_text = selection_font.render(f"Hull: {hull_option['label']} ({hull_status})", True, WHITE)
-            color_text = selection_font.render(f"Color: {color_option['label']} ({color_status})", True, WHITE)
-            nozzle_text = selection_font.render(f"Nozzle: {nozzle_option['label']} ({nozzle_status})", True, WHITE)
-            temp_surface.blit(hull_text, (center_panel.x + 30, center_panel.y + 260))
-            temp_surface.blit(color_text, (center_panel.x + 30, center_panel.y + 295))
-            temp_surface.blit(nozzle_text, (center_panel.x + 30, center_panel.y + 330))
+            hull_text = selection_font.render(f"< {hull_option['label']} >", True, WHITE)
+            color_text = selection_font.render(f"< {color_option['label']} >", True, WHITE)
+            nozzle_text = selection_font.render(f"< {nozzle_option['label']} >", True, WHITE)
+            temp_surface.blit(hull_text, (center_panel.x + 30, center_panel.y + 270))
+            temp_surface.blit(color_text, (center_panel.x + 30, center_panel.y + 305))
+            temp_surface.blit(nozzle_text, (center_panel.x + 30, center_panel.y + 340))
+            status_font = pygame.font.Font(None, 24)
+            hull_status_text = status_font.render(hull_status, True, (200, 200, 200))
+            color_status_text = status_font.render(color_status, True, (200, 200, 200))
+            nozzle_status_text = status_font.render(nozzle_status, True, (200, 200, 200))
+            temp_surface.blit(hull_status_text, (center_panel.x + 260, center_panel.y + 275))
+            temp_surface.blit(color_status_text, (center_panel.x + 260, center_panel.y + 310))
+            temp_surface.blit(nozzle_status_text, (center_panel.x + 260, center_panel.y + 345))
+
+            detail_font = pygame.font.Font(None, 26)
+            hull_detail = detail_font.render("Hull: Balanced core frame.", True, (180, 180, 200))
+            nozzle_detail = detail_font.render("Nozzle: Exhaust profile.", True, (180, 180, 200))
+            color_detail = detail_font.render("Color: Cosmetic paint coat.", True, (180, 180, 200))
+            temp_surface.blit(hull_detail, (center_panel.x + 30, center_panel.y + 415))
+            temp_surface.blit(nozzle_detail, (center_panel.x + 30, center_panel.y + 440))
+            temp_surface.blit(color_detail, (center_panel.x + 30, center_panel.y + 465))
 
             pending_cost = 0
             if not hull_owned:
@@ -1200,7 +1215,7 @@ def main():
                 pending_cost += nozzle_option["cost"]
             confirm_label = f"Confirm ({pending_cost}c)" if pending_cost else "Confirm (Owned)"
             confirm_text = selection_font.render(confirm_label, True, WHITE)
-            temp_surface.blit(confirm_text, (center_panel.x + 30, center_panel.y + 380))
+            temp_surface.blit(confirm_text, (center_panel.x + 30, center_panel.y + 390))
 
             left_header_font = pygame.font.Font(None, 36)
             left_header_font.set_bold(True)
@@ -1222,8 +1237,8 @@ def main():
             )
             weapon_info_text = info_font.render(weapon_info, True, WHITE)
             wing_info_text = info_font.render(wing_info, True, WHITE)
-            temp_surface.blit(weapon_info_text, (left_panel.x + 20, left_panel.y + 70))
-            temp_surface.blit(wing_info_text, (left_panel.x + 20, left_panel.y + 110))
+            temp_surface.blit(weapon_info_text, (left_panel.x + 20, left_panel.y + 80))
+            temp_surface.blit(wing_info_text, (left_panel.x + 20, left_panel.y + 120))
 
             tips_font = pygame.font.Font(None, 26)
             tips = [
@@ -1233,10 +1248,10 @@ def main():
             ]
             for idx, tip in enumerate(tips):
                 tip_text = tips_font.render(tip, True, WHITE)
-                temp_surface.blit(tip_text, (left_panel.x + 20, left_panel.y + 170 + idx * 26))
+                temp_surface.blit(tip_text, (left_panel.x + 20, left_panel.y + 200 + idx * 26))
 
             stats_title = left_header_font.render("Current Build", True, WHITE)
-            temp_surface.blit(stats_title, (left_panel.x + 20, left_panel.y + 270))
+            temp_surface.blit(stats_title, (left_panel.x + 20, left_panel.y + 300))
             current_color_id = next(
                 (c["id"] for c in color_options if c["color"] == player.color),
                 selected_color,
@@ -1250,11 +1265,11 @@ def main():
             ]
             for idx, line in enumerate(stats_text):
                 line_text = info_font.render(line, True, WHITE)
-                temp_surface.blit(line_text, (left_panel.x + 20, left_panel.y + 310 + idx * 26))
+                temp_surface.blit(line_text, (left_panel.x + 20, left_panel.y + 330 + idx * 26))
 
             stat_label_font = pygame.font.Font(None, 26)
             stat_bar_x = center_panel.x + 30
-            stat_bar_y = center_panel.y + 470
+            stat_bar_y = center_panel.y + 500
             stat_width = center_panel.width - 60
             stat_height = 12
             agility = min(player.wing_level / 3, 1)
@@ -1283,7 +1298,7 @@ def main():
             options_title = right_header_font.render("Options", True, WHITE)
             temp_surface.blit(options_title, (right_panel.x + 20, right_panel.y + 20))
 
-            swatch_y = right_panel.y + 420
+            swatch_y = right_panel.y + 520
             swatch_x = right_panel.x + 20
             swatch_size = 24
             swatch_spacing = 10
